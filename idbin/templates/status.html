@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<title>Status</title>
+<style>
+table, th, td { border: 1px inset black; }
+.ok { background-color: #a9ffa9; }
+.bad { background-color: #ffa9a9; }
+</style>
+<meta charset="utf-8" />
+
+<nav>
+<a href="/register">Register</a>
+<a href="/permissions">Permissions</a>
+<i>Status</i>
+</nav>
+
+<h1>Status</h1>
+
+<p>Status for all Hivecom services.
+
+<p>Contact <a href="mailto:jokler">Jokler</a> for any assistance.
+
+<table>
+<tr>
+<th>Service
+<th>Status
+
+{% for status in statuses %}
+<tr>
+<td><a href="{{ status.url }}">{{ status.name }}</a>
+    {% match status.code %}
+        {% when Some with (code) %}
+            {% if status.is_ok() %}
+<td class="ok">{{ code }}
+            {% else %}
+<td class="bad">{{ code }}
+            {% endif %}
+        {% when None %}
+<td class="bad">N/A
+    {% endmatch %}
+{% endfor %}
+
+</table>

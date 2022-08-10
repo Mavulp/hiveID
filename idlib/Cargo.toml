@@ -1,0 +1,36 @@
+[package]
+name = "idlib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.57"
+axum = { version = "0.5.7", features = ["http1", "query", "headers", "ws"] }
+bytes = "1.1.0"
+dotenv = "0.15.0"
+futures = "0.3.21"
+log = "0.4.17"
+rusqlite = "0.27.0"
+rusqlite_migration = { git = "https://github.com/cljoly/rusqlite_migration" }
+tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "sync", "net", "io-util"] }
+tokio-rusqlite = "0.1.0"
+serde = { version = "1.0.137", features = ["derive"] }
+serde_json = "1.0.81"
+thiserror = "1.0.31"
+tower-http = { version = "0.3.4", features = ["fs"] }
+env_logger = "0.9.0"
+jwt = "0.16"
+async-trait = "0.1.57"
+casbin = "2.0.9"
+hmac = "0.12.1"
+sha2 = "0.10.2"
+base64 = "0.13.0"
+argon2 = { version = "0.4.1", features = ["std"] }
+url = "2.2.2"
+axum-macros = "0.2.3"
+cookie = { version = "0.16.0", features = ["secure", "percent-encode"] }
+reqwest = "0.11.11"
+askama = "0.11.1"
+toml = "0.5.9"
+askama_axum = "0.1.0"
+urlencoding = "2.1.0"

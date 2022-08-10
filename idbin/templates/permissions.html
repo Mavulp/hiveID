@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<title>Permissions</title>
+<style>
+table, th, td { border: 1px inset black; text-align: center; }
+.ok { background-color: #a9ffa9; }
+.bad { background-color: #ffa9a9; }
+#success { display: none; }
+#success:target { display: block !important; }
+</style>
+<meta charset="utf-8" />
+
+<nav>
+<a href="/register">Register</a>
+<i>Permissions</i>
+<a href="/status">Status</a>
+</nav>
+
+<h1>Permissions</h1>
+<p>Manage permissions for all Hivecom users.
+
+<table>
+<tr>
+<th>
+{% for role in all_roles %}
+<th>{{ role }}
+{% endfor %}
+
+{% for (user, roles) in user_roles %}
+<tr>
+<th>{{ user }}
+    {% for (role, role_name) in roles.iter().zip(all_roles) %}
+        {% if role %}
+<td><input id="{{ user }}+{{ role_name }}" class="switch" checked type="checkbox" autocomplete=off />
+        {% else %}
+<td><input id="{{ user }}+{{ role_name }}" class="switch" type="checkbox" autocomplete=off />
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+</table>
+
+<h2>Changes</h2>
+<form action="/api/permissions" method="post">
+<p id="changes">None
+<p><button id="apply" disabled>Apply</button>
+</form>
+
+{% match error %}
+{% when Some with (error) %}
+<p class="error">{{ error }}
+{% when None %}
+<p id="success" class="success">Changes applied!
+{% endmatch %}
+
+<script>
+let checkboxes = document.getElementsByClassName("switch");
+let original_values = {};
+
+for (let i = 0; i < checkboxes.length; i++) {
+    let id = checkboxes[i].attributes["id"].value;
+    let checked = checkboxes[i].checked;
+    original_values[id] = checked;
+    checkboxes[i].addEventListener("change", e => {
+        let id = e.target.attributes["id"].value;
+        let orig = original_values[id];
+        let now = e.target.checked;
+        let parent = e.target.parentNode;
+
+        if (orig != now) {
+            if (now) {
+                parent.classList.toggle("ok", true);
+                parent.classList.toggle("bad", false);
+            } else {
+                parent.classList.toggle("ok", false);
+                parent.classList.toggle("bad", true);
+            }
+        } else {
+            parent.classList.remove("ok");
+            parent.classList.remove("bad");
+        }
+
+        updateSubmitForm();
+    });
+}
+
+function gatherChanges() {
+    let changes = [];
+    for (let i = 0; i < checkboxes.length; i++) {
+        let id = checkboxes[i].attributes["id"].value;
+        let checked = checkboxes[i].checked;
+        if (checked != original_values[id]) {
+            let split = id.split("+");
+            let name = split[0];
+            let role = split[1];
+            changes.push({ name: split[0], role: split[1], value: checked });
+        }
+    }
+
+    return changes;
+}
+
+function updateSubmitForm() {
+    let button = document.getElementById("apply")
+    let container = document.getElementById("changes")
+    let changes = gatherChanges();
+
+    button.disabled = changes.length == 0;
+
+    if (changes.length == 0) {
+        container.innerText = "None";
+    } else {
+        let table = document.createElement("table");
+        let row = document.createElement("tr");
+        let c = document.createElement("th");
+        c.innerText = "Name"
+        row.appendChild(c);
+        c = document.createElement("th");
+        c.innerText = "Change"
+        row.appendChild(c);
+
+        table.appendChild(row);
+
+        for (let i = 0; i < changes.length; i++) {
+            row = document.createElement("tr");
+            c = document.createElement("td");
+            c.innerText = changes[i].name; 
+            row.appendChild(c);
+            c = document.createElement("td");
+            c.innerText = changes[i].role; 
+            c.classList.toggle(changes[i].value ? "ok" : "bad", true);
+            row.appendChild(c);
+
+            let input = document.createElement("input");
+            input.type = "hidden";
+            input.name = changes[i].name + "+" + changes[i].role;
+            input.value = changes[i].value;
+
+            row.appendChild(input);
+
+            table.appendChild(row);
+        }
+
+        container.textContent = "";
+        container.appendChild(table);
+    }
+}
+</script>
