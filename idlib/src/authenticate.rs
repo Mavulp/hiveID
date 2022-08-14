@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, pin::Pin, sync::Arc};
 
 use anyhow::Context;
 use axum::{
@@ -13,22 +13,44 @@ use axum::{
     Extension, Router, TypedHeader,
 };
 use cookie::{Cookie, CookieJar, SameSite};
+use futures::Future;
 use jwt::VerifyWithKey;
+use log::debug;
 
-use crate::{Authorizations, Error, IdpClient, SecretKey, Variables};
+use crate::{Authorizations, Error, IdpClient, Payload, PermissionResponse, SecretKey, Variables};
 
-pub fn api_route(
+#[derive(Clone)]
+pub struct AuthCallback(
+    pub  Arc<
+        Box<
+            dyn Fn(String) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send>>
+                + Send
+                + Sync,
+        >,
+    >,
+);
+
+pub fn api_route(client: IdpClient, cb: Option<AuthCallback>) -> Router {
+    let mut router = Router::new()
+        .route("/", get(get_auth))
+        .route("/", post(post_auth))
+        .route("/", put(put_auth))
+        .layer(Extension(client));
+
+    if let Some(cb) = cb {
+        router = router.layer(Extension(cb));
+    }
+
+    router
+}
+
+pub fn api_extensions(
     secret_key: SecretKey,
-    client: IdpClient,
     authorizations: Authorizations,
     variables: Arc<Variables>,
 ) -> Router {
     Router::new()
-        .route("/", get(get_auth))
-        .route("/", post(post_auth))
-        .route("/", put(put_auth))
         .layer(Extension(secret_key))
-        .layer(Extension(client))
         .layer(Extension(authorizations))
         .layer(Extension(variables))
 }
@@ -37,13 +59,24 @@ pub fn api_route(
 /// cookie in the client's browser.
 async fn get_auth(
     Query(params): Query<HashMap<String, String>>,
+    Extension(SecretKey(secret_key)): Extension<SecretKey>,
+    cb: Option<Extension<AuthCallback>>,
 ) -> Result<Response<BoxBody>, Error> {
     let redirect_to = params.get("redirect").ok_or(Error::MissingRedirect)?;
     let token = params.get("token").ok_or(Error::MissingToken)?;
 
+    let payload: Payload = token
+        .verify_with_key(&*secret_key)
+        .context("Failed to verify token")?;
+    if let Some(Extension(AuthCallback(cb))) = cb {
+        (cb)(payload.name)
+            .await
+            .context("Failed to run callback function")?;
+    }
+
     // stuff the token in a cookie and send it back with the redirect back to
     // the original page the client started on.
-    let cookie = create_auth_cookie(&token);
+    let cookie = create_auth_cookie(token);
 
     let response = Response::builder()
         .header(LOCATION, redirect_to)
@@ -92,9 +125,10 @@ async fn post_auth(
 /// Updates the authorization data. Should only be called by the IDP when it
 /// wants to inform us that some access rules have changed.
 async fn put_auth(
-    _body: String,
+    body: String,
     TypedHeader(Authorization(bearer)): TypedHeader<Authorization<Bearer>>,
     Extension(SecretKey(secret_key)): Extension<SecretKey>,
+    Extension(auth): Extension<Authorizations>,
 ) -> Result<Response<BoxBody>, Error> {
     let claims: String = bearer
         .token()
@@ -104,18 +138,31 @@ async fn put_auth(
         return Err(Error::Unathorized);
     }
 
-    todo!()
+    let permissions: PermissionResponse =
+        serde_json::de::from_str(&body).context("Failed to parse permission update")?;
+
+    auth.replace_policy(permissions.policy, permissions.group_policy)
+        .await
+        .context("Failed to replace policy on permission update")?;
+
+    debug!("Updated permissions from IDP");
+
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .body(boxed(Empty::new()))
+        .unwrap();
+    Ok(response)
 }
 
 #[derive(Clone)]
-pub struct Cookies(CookieJar);
+pub struct Cookies(pub CookieJar);
 
 #[async_trait::async_trait]
 impl<B> FromRequest<B> for Cookies
 where
     B: Send,
 {
-    type Rejection = (StatusCode, &'static str);
+    type Rejection = ();
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let mut jar = CookieJar::new();
@@ -135,6 +182,7 @@ where
 fn create_auth_cookie<'a>(token: &'a str) -> Cookie<'a> {
     let mut cookie = Cookie::new("__auth", token);
     cookie.set_http_only(true);
+    cookie.set_path("/");
     cookie.set_secure(true);
     cookie.set_same_site(SameSite::Strict);
     cookie.make_permanent();

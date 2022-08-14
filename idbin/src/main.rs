@@ -1,5 +1,6 @@
 use std::{collections::HashMap, env, fs, net::SocketAddr, path::PathBuf, sync::Arc};
 
+
 use askama::Template;
 use axum::{
     body::{self, boxed, BoxBody, Empty, Full},
@@ -7,9 +8,10 @@ use axum::{
     routing::{get, post},
     Extension, Router,
 };
-use casbin::{CoreApi, DefaultModel, Enforcer, FileAdapter};
+use casbin::{CoreApi};
 use error::Error;
-use idlib::{Authorizations, SecretKey};
+use idlib::{Authorizations, IdpClient, SecretKey};
+
 use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
 use status::{status_poll_loop, Statuses};
@@ -43,6 +45,8 @@ pub fn api_route(
         .route("/api/login", post(login::post_login))
         .route("/api/register", post(register::post_register))
         .route("/api/permissions", post(permissions::post_permissions))
+        .route("/api/permissions", get(permissions::get_permissions))
+        .layer(Extension(IdpClient::default()))
         .layer(Extension(db))
         .layer(Extension(secret_key))
         .layer(Extension(services))
@@ -107,31 +111,7 @@ async fn run() {
     let services: ServiceConfig = toml::from_slice(&config).expect("Failed to parse config file");
     let services = Services(Arc::new(services.service));
 
-    let model = DefaultModel::from_str(
-        r"
-[request_definition]
-r = sub, obj, act
-
-[policy_definition]
-p = sub, obj, act
-
-[role_definition]
-g = _, _
-
-[policy_effect]
-e = some(where (p.eft == allow))
-
-[matchers]
-m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
-        ",
-    )
-    .await
-    .expect("Failed to load model");
-    let adapter = FileAdapter::new(casbin_path);
-    let enforcer = Enforcer::new(model, adapter)
-        .await
-        .expect("Failed to create enforcer");
-    let authorizations = Authorizations(Arc::new(RwLock::new(enforcer)));
+    let authorizations = Authorizations::from_file(casbin_path).await;
 
     let bind_addr: SocketAddr = env::var("BIND_ADDRESS")
         .expect("BIND_ADDRESS not set")
