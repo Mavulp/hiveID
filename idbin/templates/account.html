@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<title>Register</title>
+<title>Account - {{ username }}</title>
 <style>
 :root {
   --shadow-color: 43deg 31% 62%;
@@ -24,72 +24,72 @@
 }
 html, body { height: 100%; padding: 0; margin: 0; background-color: #fff9ea; color: #333; font-family: sans-serif; }
 nav { position: absolute; right: 0; margin: 0.5em; font-size: 1.25em; font-weight: bold; }
-table { text-align: end; border-spacing: 0; }
-p { width: 18em; color: #666; margin-left: auto; margin-right: auto; }
+table { border-spacing: 0; }
 tr { margin-top: 0.1em; }
 td { padding: 0.5em; }
 .a { display: table; width: 100%; height: 100%; }
 .b { display: table-cell; vertical-align: middle; padding: 3em; text-align: center; }
 .cool { border-radius: 4px; box-shadow: var(--shadow-elevation-medium); }
-.register {  display: inline-block; background-color: #fff; }
+.update { text-align: end; display: inline-block; background-color: #fff; }
 
 .footer { border-radius: 0 0 4px 4px; margin: 0 -0.3em -0.3em -0.3em; padding: 1em; text-align: center; }
 .error { background-color: #ffc8c8; color: #300;  }
+#success { display: none; background-color: #c8ffc8; color: #030; }
+#success:target { display: table-cell !important; }
 </style>
 <meta charset="utf-8" />
 
-<!--<nav>
-<i>Register</i>
-<a href="/permissions">Permissions</a>
-<a href="/status">Status</a>
-<a href="/audit">Audit</a>
-</nav>-->
+<nav>
+{% if permissions.permissions %}
+<a href="/admin/permissions">Permissions</a>
+{% endif %}
+{% if permissions.audit %}
+<a href="/admin/audit">Audit</a>
+{% endif %}
+{% if permissions.invite %}
+<a href="/admin/invite">Invite</a>
+{% endif %}
+{% if permissions.permissions || permissions.audit || permissions.invite %}
+|
+{% endif %}
+<a href="/">Dashboard</a>
+Settings
+</nav>
 
 <div class="a">
 <div class="b">
-<form class="cool register" action="/register" method="post" >
-<h2 style="text-align:center;">Register account</h2>
 
-<p>You have been invited by <b>{{ inviter }}</b> to Hivecom.
-
-<p>After registering you will be sent to the dashboard where you can see all sites you have access to!
+<form class="cool update" action="/account" method="post" >
+<h2 style="text-align:center;">Account settings</h2>
 
 <table style="margin:auto;">
-
 <tr>
 <td><label for="username">Username:</label>
-{% match username %}
-{% when Some with (username) %}
-<td><input type="text" name="username" value="{{ username }}" required />
-{% when None %}
-<td><input type="text" name="username" autofocus required />
-{% endmatch %}
+<td><input type="text" name="username" value="{{ username }}" readonly="readonly" required />
 
 <tr>
 <td><label for="email">Email:</label>
-<td><input type="email" name="email" autofill="email" required />
+<td><input type="email" name="email" value="{{ email }}" required />
 
 <tr>
-<td><label for="password">Password:</label>
-{% match username %}
-{% when Some with (username) %}
-<td><input type="password" name="password" autofocus autofill="new-password" required />
-{% when None %}
-<td><input type="password" name="password" required autofill="new-password"/>
-{% endmatch %}
+<td><label for="password">New password:</label>
+<td><input type="password" name="password" autocomplete="new-password" />
 
 <tr>
-<td><label for="password2">Repeat password:</label>
-<td><input type="password" name="password2" autofill="new-password" required />
+<td><label for="password2">Repeat new password:</label>
+<td><input type="password" name="password2" autocomplete="new-password" />
 
 <tr>
-<td colspan="2"><input type="submit" style="width:100%;" value="Register" />
-</table>
+<td><label for="old_password">Current password:</label>
+<td><input type="password" name="old_password" autocomplete="current-password" required="required" />
 
-{% if let Some(error) = error_message %}
+<tr>
+<td colspan="2"><input type="submit" style="width:100%;" value="Update" />
+{% if let Some(error) = error %}
 <tr>
 <td colspan=2 class="footer error">{{ error }}
+{% else %}
+<tr>
+<td colspan=2 id="success" class="footer">Updated settings!
 {% endif %}
-
-<input type="hidden" name="invite" value="{{ invite_key }}">
-</form>
+</table>

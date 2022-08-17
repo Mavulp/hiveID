@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<title>Audit</title>
+<style>
+table, th, td { border: 1px inset black; }
+.ok { background-color: #a9ffa9; }
+.bad { background-color: #ffa9a9; }
+</style>
+<meta charset="utf-8" />
+
+<h1>Admin dashboard</h1>
+<nav>
+<a href="permissions">Permissions</a>
+<i>Audit</i>
+<a href="invite">Invites</a>
+</nav>
+
+<h2>Audit log</h2>
+
+<table>
+<tr>
+<th>Action
+<th>User
+<th>Time
+
+{% for action in actions %}
+<tr>
+<td>{{ action.action|safe }}
+<td>{{ action.performed_by }}
+<td>{{ action.at }}
+{% endfor %}
+
+</table>

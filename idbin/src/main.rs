@@ -1,6 +1,5 @@
 use std::{collections::HashMap, env, fs, net::SocketAddr, path::PathBuf, sync::Arc};
 
-
 use askama::Template;
 use axum::{
     body::{self, boxed, BoxBody, Empty, Full},
@@ -8,7 +7,6 @@ use axum::{
     routing::{get, post},
     Extension, Router,
 };
-use casbin::{CoreApi};
 use error::Error;
 use idlib::{Authorizations, IdpClient, SecretKey};
 
@@ -17,7 +15,11 @@ use serde::{Deserialize, Serialize};
 use status::{status_poll_loop, Statuses};
 use tokio::sync::RwLock;
 
+mod account;
+mod audit;
 mod error;
+mod home;
+mod invite;
 mod login;
 mod permissions;
 mod register;
@@ -37,15 +39,23 @@ pub fn api_route(
 ) -> Router {
     Router::new()
         // .route("/api/streams/:stream", get(stream::get_streams))
+        .route("/", get(home::page))
         .route("/login", get(login::page))
         .route("/register", get(register::page))
+        .route("/register", post(register::post_page))
+        .route("/account", get(account::page))
+        .route("/account", post(account::post_page))
         .route("/status", get(status::page))
-        .route("/permissions", get(permissions::page))
+        .route("/admin/permissions", get(permissions::page))
+        .route("/admin/audit", get(audit::page))
+        .route("/admin/invite", get(invite::page))
+        .route("/admin/invite/create", post(invite::create_page))
+        .route("/admin/invite/delete", post(invite::delete_page))
         .route("/api/health", get(health))
         .route("/api/login", post(login::post_login))
-        .route("/api/register", post(register::post_register))
         .route("/api/permissions", post(permissions::post_permissions))
         .route("/api/permissions", get(permissions::get_permissions))
+        .route("/api/account", post(account::post_account))
         .layer(Extension(IdpClient::default()))
         .layer(Extension(db))
         .layer(Extension(secret_key))
@@ -64,9 +74,19 @@ pub struct ServiceConfig {
 #[serde(rename_all = "kebab-case")]
 pub struct Service {
     nice_name: String,
+    description: Option<String>,
     url: String,
     auth_url: String,
     health_url: String,
+    show_on_dashboard: Option<bool>,
+    required_policy: Option<String>,
+    default_roles: Option<Vec<String>>,
+}
+
+impl Service {
+    pub fn is_restricted(&self) -> bool {
+        self.required_policy.is_some()
+    }
 }
 
 #[derive(Clone)]
@@ -123,11 +143,9 @@ async fn run() {
         .expect("Failed to open database");
 
     // apply latest migrations
-    conn.call(|mut c| {
+    conn.call(|c| {
         let migrations = Migrations::new(MIGRATIONS.to_vec());
-        migrations
-            .to_latest(&mut c)
-            .expect("Failed to apply migrations");
+        migrations.to_latest(c).expect("Failed to apply migrations");
     })
     .await;
 

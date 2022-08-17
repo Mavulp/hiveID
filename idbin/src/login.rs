@@ -1,4 +1,4 @@
-use std::{fmt::Write, time::SystemTime};
+use std::time::SystemTime;
 
 use anyhow::Context;
 use argon2::{Argon2, PasswordHash, PasswordVerifier};

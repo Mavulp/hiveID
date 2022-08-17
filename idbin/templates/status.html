@@ -7,11 +7,12 @@ table, th, td { border: 1px inset black; }
 </style>
 <meta charset="utf-8" />
 
-<nav>
+<!--<nav>
 <a href="/register">Register</a>
 <a href="/permissions">Permissions</a>
 <i>Status</i>
-</nav>
+<a href="/audit">Audit</a>
+</nav>-->
 
 <h1>Status</h1>
 
@@ -26,7 +27,7 @@ table, th, td { border: 1px inset black; }
 
 {% for status in statuses %}
 <tr>
-<td><a href="{{ status.url }}">{{ status.name }}</a>
+<td><a href="{{ status.url }}">{{ status.nice_name }}</a>
     {% match status.code %}
         {% when Some with (code) %}
             {% if status.is_ok() %}

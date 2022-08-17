@@ -226,18 +226,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "axum-macros"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6293dae2ec708e679da6736e857cf8532886ef258e92930f38279c12641628b8"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -262,6 +250,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9cf849ee05b2ee5fba5e36f97ff8ec2533916700fc0758d40d92136a42f3388"
 dependencies = [
  "digest",
+]
+
+[[package]]
+name = "blob-uuid"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83fc15853171b33280f5614e77f5fa4debd33f51a86c44daa4ba3d759674c561"
+dependencies = [
+ "base64",
+ "uuid",
 ]
 
 [[package]]
@@ -671,12 +669,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "heck"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
-
-[[package]]
 name = "hermit-abi"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -802,8 +794,8 @@ dependencies = [
  "askama_axum",
  "async-trait",
  "axum",
- "axum-macros",
  "base64",
+ "blob-uuid",
  "bytes",
  "casbin",
  "cookie",
@@ -819,8 +811,10 @@ dependencies = [
  "rusqlite_migration",
  "serde",
  "serde_json",
+ "serde_rusqlite",
  "sha2",
  "thiserror",
+ "time",
  "tokio",
  "tokio-rusqlite",
  "toml",
@@ -834,32 +828,22 @@ name = "idlib"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "argon2",
- "askama",
- "askama_axum",
  "async-trait",
  "axum",
- "axum-macros",
  "base64",
  "bytes",
  "casbin",
  "cookie",
- "dotenv",
- "env_logger",
  "futures",
  "hmac",
  "jwt",
  "log",
  "reqwest",
- "rusqlite",
- "rusqlite_migration",
  "serde",
  "serde_json",
  "sha2",
  "thiserror",
  "tokio",
- "tokio-rusqlite",
- "toml",
  "tower-http",
  "url",
  "urlencoding",
@@ -1493,6 +1477,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_rusqlite"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e73509831d054bb2d2a69e3457ad7c417a5820bab80a70676182148e29a503ed"
+dependencies = [
+ "rusqlite",
+ "serde",
+]
+
+[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1637,12 +1631,11 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.12"
+version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74b7cc93fc23ba97fde84f7eea56c55d1ba183f495c6715defdfc7b9cb8c870f"
+checksum = "db76ff9fa4b1458b3c7f077f3ff9887394058460d21e634355b273aaf11eea45"
 dependencies = [
  "itoa",
- "js-sys",
  "libc",
  "num_threads",
  "time-macros",
@@ -1910,6 +1903,15 @@ name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
+
+[[package]]
+name = "uuid"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd6469f4314d5f1ffec476e05f17cc9a78bc7a27a6a857842170bdf8d6f98d2f"
+dependencies = [
+ "getrandom",
+]
 
 [[package]]
 name = "vcpkg"

@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use std::collections::HashMap;
 
 use anyhow::Context;
 use askama::Template;
@@ -12,7 +12,7 @@ use axum::{
 
 use casbin::{CoreApi, MgmtApi, RbacApi};
 use futures::{stream, StreamExt};
-use idlib::{Authorizations, IdpClient, SecretKey};
+use idlib::{ApiAuthorize, Authorizations, Authorize, IdpClient, SecretKey};
 
 use jwt::{SignWithKey, VerifyWithKey};
 use log::{debug, warn};
@@ -21,7 +21,11 @@ use serde::{Deserialize, Serialize};
 use rusqlite::params;
 use tokio_rusqlite::Connection;
 
-use crate::{error::Error, into_response, Service, Services};
+use crate::{
+    audit::{self, UserPermissionChange},
+    error::Error,
+    into_response, Service, Services,
+};
 
 #[derive(Template)]
 #[template(path = "permissions.html")]
@@ -86,6 +90,7 @@ pub(crate) async fn page(
 }
 
 pub(crate) async fn post_permissions(
+    Authorize(name): ApiAuthorize<"permissions", "write">,
     Form(changes): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
     Extension(services): Extension<Services>,
@@ -93,9 +98,13 @@ pub(crate) async fn post_permissions(
     Extension(client): Extension<IdpClient>,
     Extension(key): Extension<SecretKey>,
 ) -> Result<Response<BoxBody>, Error> {
-    let redirect = match post_permissions_impl(changes, auth, services, client, key, db).await {
-        Ok(()) => "/permissions#success".into(),
-        Err(e) => format!("/permissions?error={}", urlencoding::encode(&e.to_string())),
+    let redirect = match post_permissions_impl(changes, auth, services, client, key, db, name).await
+    {
+        Ok(()) => "/admin/permissions#success".into(),
+        Err(e) => format!(
+            "/admin/permissions?error={}",
+            urlencoding::encode(&e.to_string())
+        ),
     };
 
     let response = Response::builder()
@@ -113,26 +122,52 @@ pub(crate) async fn post_permissions_impl(
     Services(services): Services,
     IdpClient(client): IdpClient,
     key: SecretKey,
-    _db: Connection,
+    db: Connection,
+    name: String,
 ) -> Result<(), Error> {
     let mut auth = auth.write().await;
 
+    let mut audit_changes = HashMap::new();
     for (id, value) in changes {
         let value = value == "true";
         let (name, role) = id.split_once('+').context("Invalid ID")?;
 
         debug!("Setting role {role:?} for user {name:?} to {value}");
 
+        let (ref mut added, ref mut removed) = audit_changes
+            .entry(name.to_string())
+            .or_insert((Vec::new(), Vec::new()));
+
         if value {
+            added.push(role.to_string());
             auth.add_role_for_user(name, role, None)
                 .await
                 .context("Failed to add role for user")?;
         } else {
+            removed.push(role.to_string());
             auth.delete_role_for_user(name, role, None)
                 .await
                 .context("Failed to remove role for user")?;
         }
     }
+
+    db.call(move |conn| {
+        audit::log(
+            conn,
+            audit::AuditAction::PermissionChange(
+                audit_changes
+                    .into_iter()
+                    .map(|(k, (a, r))| UserPermissionChange {
+                        username: k,
+                        added: a,
+                        removed: r,
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+            &name,
+        )
+    })
+    .await?;
 
     debug!("Saving policy");
     auth.save_policy().await.context("Failed to save policy")?;

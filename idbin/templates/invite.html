@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<title>Invites</title>
+<style>
+table, th, td { border: 1px inset black; text-align: center; }
+.ok { background-color: #a9ffa9; }
+.bad { background-color: #ffa9a9; }
+.pending { background-color: #ffffa9; }
+#removed, #added { display: none; }
+#removed:target, #added:target { display: block !important; }
+fieldset { display: inline-block; }
+</style>
+<meta charset="utf-8" />
+
+<h1>Admin dashboard</h1>
+<nav>
+<a href="permissions">Permissions</a>
+<a href="audit">Audit</a>
+<i>Invites</i>
+</nav>
+
+<h2>Create invite</h2>
+<form action="/admin/invite/create" method="post">
+<fieldset>
+<legend>Choose access to services</legend>
+
+{% for (name, service) in services %}
+    {% if service.is_restricted() %}
+<input type="checkbox" name="{{ name }}" />
+<label for="{{ name }}">{{ service.nice_name }}</label>
+<br>
+    {% endif %}
+{% endfor %}
+</fieldset>
+<br>
+<input type="submit" value="Create invite" />
+</form>
+
+
+<h2>All invites</h2>
+<h3>Legend</h3>
+<table>
+<tr>
+<th class="ok">Used
+<th class="pending">Pending
+</table>
+<p>
+<table>
+<tr>
+<th>Link
+<th>Created by
+<th>Created at
+<th>Used by
+<th>Used at
+<th>Revoke
+
+{% for link in links %}
+<tr>
+    {% if let Some(_) = link.used_by %}
+<td class="ok"><a href="/register?invite={{ link.key }}">{{ link.key }}</a>
+    {% else %}
+<td class="pending"><a href="/register?invite={{ link.key }}">{{ link.key }}</a>
+    {% endif %}
+<td>{{ link.created_by }}
+<td>{{ link.created_at }}
+<td>
+{% if let Some(used_by) = link.used_by %}
+    {{ used_by }}
+{% endif %}
+<td>
+{% if let Some(used_at) = link.used_at %}
+    {{ used_at }}
+{% endif %}
+<td>
+    {% if let None = link.used_by %}
+<form action="/admin/invite/delete" method="post">
+<input type="hidden" name="key" value="{{ link.key }}" />
+<input type="submit" value="Revoke" />
+</form>
+    {% endif %}
+{% endfor %}
+</table>
+
+{% match error %}
+{% when Some with (error) %}
+<p class="error">{{ error }}
+{% when None %}
+<p id="removed" class="success">Deleted invite link!
+<p id="added" class="success">Created invite link!
+{% endmatch %}

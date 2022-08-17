@@ -30,12 +30,13 @@ pub enum Operation {
 }
 
 pub struct Authorize<
-    const API: bool = false,
     const RESOURCE: &'static str = "",
     const OP: &'static str = "",
+    const API: bool = false,
 >(pub String);
+
 pub type ApiAuthorize<const RESOURCE: &'static str = "", const OP: &'static str = ""> =
-    Authorize<true, RESOURCE, OP>;
+    Authorize<RESOURCE, OP, true>;
 
 #[derive(Serialize, Deserialize)]
 pub struct Payload {
@@ -66,8 +67,8 @@ pub enum AuthorizationRejection {
 }
 
 #[async_trait]
-impl<B, const API: bool, const RESOURCE: &'static str, const OP: &'static str> FromRequest<B>
-    for Authorize<API, RESOURCE, OP>
+impl<B, const RESOURCE: &'static str, const OP: &'static str, const API: bool> FromRequest<B>
+    for Authorize<RESOURCE, OP, API>
 where
     B: Send,
 {
@@ -83,7 +84,7 @@ where
                     return Err(AuthorizationRejection::MissingApiAuth);
                 } else {
                     // redirect to IDP login site when not in an API call (eg. rendering html
-                    // templates) 
+                    // templates)
                     debug!("Failed to find auth cookie. Redirecting to IDP");
 
                     let Extension(variables) =
