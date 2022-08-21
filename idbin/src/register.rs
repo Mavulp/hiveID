@@ -15,6 +15,7 @@ use axum::{
 
 use casbin::RbacApi;
 use idlib::Authorizations;
+use log::debug;
 use rusqlite::params;
 use serde::Deserialize;
 
@@ -114,6 +115,10 @@ pub(crate) async fn post_register_impl(
     Services(services): Services,
     db: Connection,
 ) -> Result<(), Error> {
+    if register.username.starts_with("role_") {
+        return Err(anyhow::anyhow!("Invalid username").into());
+    }
+
     if register.password != register.password2 {
         return Err(anyhow::anyhow!("Passwords do not match").into());
     }
@@ -150,6 +155,8 @@ pub(crate) async fn post_register_impl(
     for service in service_access {
         if let Some(roles) = services.get(service).and_then(|s| s.default_roles.as_ref()) {
             for role in roles {
+                debug!("Assigning role {role:?} to {username:?}");
+
                 auth.add_role_for_user(&username, role, None)
                     .await
                     .context("Failed to add default roles for user")?;
