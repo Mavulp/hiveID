@@ -4,21 +4,20 @@ use anyhow::Context;
 use axum::{
     body::{boxed, BoxBody, Empty},
     extract::{FromRequest, Query, RequestParts},
-    headers::{authorization::Bearer, Authorization},
     http::{
         header::{COOKIE, LOCATION, SET_COOKIE},
         Response, StatusCode,
     },
     response::IntoResponse,
-    routing::{get, post, put},
-    Extension, Router, TypedHeader,
+    routing::{get, post},
+    Extension, Router,
 };
 use cookie::{Cookie, CookieJar, SameSite};
 use futures::Future;
 use jwt::VerifyWithKey;
-use log::debug;
 
-use crate::{Error, IdpClient, Payload, PermissionResponse, SecretKey, Variables};
+
+use crate::{Error, IdpClient, Payload, SecretKey, Variables};
 
 #[derive(Clone)]
 pub struct AuthCallback(

@@ -3,8 +3,8 @@
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
-use std::{env, path::PathBuf, sync::Arc};
-use tokio::sync::RwLock;
+use std::{env, sync::Arc};
+
 
 mod authenticate;
 mod authorize;

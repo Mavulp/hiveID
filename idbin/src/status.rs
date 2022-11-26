@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -6,15 +6,15 @@ use axum::{
     http::{Response, StatusCode},
     Extension,
 };
-use futures::{stream, StreamExt};
+use futures::{StreamExt};
 use reqwest::Client;
-use tokio::{time::sleep, sync::RwLock};
+use tokio::{sync::RwLock};
 
 use crate::Connection;
 use crate::{error::Error, into_response};
 
-pub async fn status_poll_loop(db: Connection, Statuses(statuses): Statuses) {
-    let client = Client::new();
+pub async fn status_poll_loop(_db: Connection, Statuses(_statuses): Statuses) {
+    let _client = Client::new();
 
     /*
     loop {

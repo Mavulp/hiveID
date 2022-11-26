@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fs, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{env, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -11,7 +11,7 @@ use error::Error;
 use idlib::{IdpClient, SecretKey, Variables};
 
 use rusqlite_migration::{Migrations, M};
-use serde::{Deserialize, Serialize};
+
 use status::{status_poll_loop, Statuses};
 use tokio::sync::RwLock;
 use tower_http::services::ServeDir;
@@ -106,7 +106,7 @@ async fn health() -> Result<Response<BoxBody>, Error> {
 }
 
 async fn run() {
-    let config_file: PathBuf = env::var("CONFIG_FILE").expect("CONFIG_FILE not set").into();
+    let _config_file: PathBuf = env::var("CONFIG_FILE").expect("CONFIG_FILE not set").into();
     let db_path: PathBuf = env::var("DB_PATH").expect("DB_PATH not set").into();
     let serve_dir: PathBuf = env::var("SERVE_DIR").expect("SERVE_DIR not set").into();
     let secret_key = SecretKey::from_env();

@@ -16,7 +16,7 @@ use axum::{
     Extension, Json,
 };
 use jwt::VerifyWithKey;
-use log::{debug, info, warn};
+use log::{debug};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;

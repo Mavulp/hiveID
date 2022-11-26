@@ -5,17 +5,16 @@ use askama::Template;
 use axum::{
     body::{boxed, BoxBody, Empty},
     extract::Query,
-    headers::{authorization::Bearer, Authorization},
     http::{Response, StatusCode},
-    Extension, Form, Json, TypedHeader,
+    Extension, Form,
 };
 
-use futures::{stream, StreamExt};
+use futures::{StreamExt};
 use idlib::{AuthorizeCookie, IdpClient, SecretKey};
 
-use jwt::{SignWithKey, VerifyWithKey};
+
 use log::{debug, warn};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 
 use rusqlite::params;
 use tokio_rusqlite::Connection;
@@ -144,7 +143,7 @@ pub(crate) async fn page(
     Query(params): Query<PermissionParams>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
-    let users = get_users(&db).await?;
+    let _users = get_users(&db).await?;
     let service_roles = get_all_roles(&db).await?;
     let user_roles = get_user_roles(&db).await?;
 
@@ -164,7 +163,7 @@ pub(crate) async fn post_permissions(
     Form(changes): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
     Extension(client): Extension<IdpClient>,
-    Extension(key): Extension<SecretKey>,
+    Extension(_key): Extension<SecretKey>,
 ) -> Result<Response<BoxBody>, Error> {
     let redirect = match post_permissions_impl(changes, client, db, payload.name).await {
         Ok(()) => "/admin/permissions#success".into(),
@@ -189,7 +188,7 @@ pub(crate) async fn post_permissions(
 
 pub(crate) async fn post_permissions_impl(
     changes: Vec<(String, String)>,
-    IdpClient(client): IdpClient,
+    IdpClient(_client): IdpClient,
     db: Connection,
     performed_by: String,
 ) -> Result<(), Error> {

@@ -10,14 +10,14 @@ use axum::{
     Extension, Form,
 };
 use hmac::{Hmac, Mac};
-use idlib::{Payload, SecretKey};
+use idlib::{Payload};
 use jwt::SignWithKey;
 use log::debug;
 use rusqlite::{params, OptionalExtension};
 use serde::Deserialize;
 use sha2::Sha256;
 use tokio_rusqlite::Connection;
-use url::Url;
+
 
 use crate::{error::Error, into_response};
 
@@ -199,7 +199,7 @@ pub(crate) async fn post_login_impl(
         .sign_with_key(&secret_key)
         .context("Failed to sign payload")?;
 
-    let mut url = format!(
+    let url = format!(
         "{}?redirect_uri={}&token={}",
         service.callback_url,
         urlencoding::encode(&login.redirect),
