@@ -1,47 +1,60 @@
 use askama::Template;
 use axum::{body::BoxBody, http::Response, Extension};
-use casbin::CoreApi;
-use idlib::{Authorizations, Authorize};
+use idlib::AuthorizeCookie;
+use reqwest::StatusCode;
+use rusqlite::params;
 
-use crate::{error::Error, into_response, status::Statuses, Service, Services};
+use crate::{error::Error, into_response, status::Statuses, Connection};
+
+pub(crate) struct Service {
+    name: String,
+    nice_name: String,
+    desc: String,
+    status: Option<StatusCode>,
+}
+
+async fn get_all_services(db: &Connection, Statuses(statuses): Statuses) -> Vec<Service> {
+    let statuses = statuses.read().await.clone();
+
+    db.call(move |conn| {
+        let mut stmt = conn
+            .prepare("SELECT name, nice_name, description FROM services")
+            .unwrap();
+        let services = stmt
+            .query_map(params![], |row| {
+                let name: String = row.get(0).unwrap();
+                let nice_name: String = row.get(1).unwrap();
+                let desc: String = row.get(2).unwrap();
+                let status = statuses.iter().find(|s| s.name == name).and_then(|s| s.code);
+                Ok(Service { name, nice_name, desc, status })
+            })
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        services
+    })
+    .await
+}
 
 #[derive(Template)]
 #[template(path = "home.html")]
 struct HomePageTemplate<'a> {
-    services: &'a [(&'a String, &'a Service, bool)],
+    current_page: &'static str,
+    admin: bool,
+    services: &'a [Service],
 }
 
 pub(crate) async fn page(
-    Authorize(name): Authorize,
-    Extension(Authorizations(auth)): Extension<Authorizations>,
-    Extension(Services(services)): Extension<Services>,
-    Extension(Statuses(statuses)): Extension<Statuses>,
+    AuthorizeCookie(payload): AuthorizeCookie,
+    Extension(db): Extension<Connection>,
+    Extension(statuses): Extension<Statuses>,
 ) -> Result<Response<BoxBody>, Error> {
-    let auth = auth.read().await;
-    let statuses = statuses.read().await;
+    let services = get_all_services(&db, statuses).await;
 
-    let services = services
-        .iter()
-        .filter(|(_k, v)| {
-            v.show_on_dashboard.unwrap_or(false)
-                && v.required_policy
-                    .as_ref()
-                    .map(|p| auth.enforce((&name, &p, "read")).unwrap_or(false))
-                    .unwrap_or(true)
-        })
-        .map(|(k, v)| {
-            (
-                k,
-                v,
-                statuses
-                    .iter()
-                    .find(|s| &s.name == k)
-                    .map(|s| s.is_ok())
-                    .unwrap_or(false),
-            )
-        })
-        .collect::<Vec<_>>();
     let template = HomePageTemplate {
+        current_page: "/",
+        admin: payload.groups.iter().any(|g| g == "admin"),
         services: &services,
     };
 

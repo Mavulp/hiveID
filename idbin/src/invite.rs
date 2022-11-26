@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use anyhow::Context;
 use askama::Template;
@@ -9,7 +9,7 @@ use axum::{
     Extension, Form,
 };
 
-use idlib::Authorize;
+use idlib::AuthorizeCookie;
 
 use serde::Deserialize;
 
@@ -20,23 +20,34 @@ use tokio_rusqlite::Connection;
 use crate::{
     audit::{self, AuditAction},
     error::Error,
-    into_response, Service, Services,
+    into_response
 };
 
 struct Link {
     key: String,
     created_by: String,
-    created_at: OffsetDateTime,
+    created_ago: Duration,
     used_by: Option<String>,
-    used_at: Option<OffsetDateTime>,
+    used_ago: Option<Duration>,
 }
 
 #[derive(Template)]
 #[template(path = "invite.html")]
-struct InvitePageTemplate<'a> {
+struct InvitePageTemplate {
+    current_page: &'static str,
+    admin: bool,
     links: Vec<Link>,
-    services: &'a HashMap<String, Service>,
+    // services: &'a HashMap<String, Service>,
     error: Option<String>,
+}
+
+mod filters {
+    use std::time::Duration;
+    use relativetime::NegativeRelativeTime;
+
+    pub fn duration(duration: &Duration) -> ::askama::Result<String> {
+        Ok(duration.to_relative_in_past())
+    }
 }
 
 #[derive(Deserialize)]
@@ -61,16 +72,16 @@ async fn get_users(db: &Connection) -> anyhow::Result<Vec<String>> {
 }
 
 pub(crate) async fn page(
-    Authorize(_): Authorize<"invite", "read">,
+    AuthorizeCookie(_): AuthorizeCookie<{ Some("admin") }>,
     Query(params): Query<InviteParams>,
     Extension(db): Extension<Connection>,
-    Extension(Services(services)): Extension<Services>,
 ) -> Result<Response<BoxBody>, Error> {
     let links = get_links(db).await?;
 
     let template = InvitePageTemplate {
+        current_page: "/admin/invite",
+        admin: true,
         links,
-        services: &services,
         error: params.error,
     };
 
@@ -105,6 +116,7 @@ async fn get_links(db: Connection) -> anyhow::Result<Vec<Link>> {
             )
             .context("Failed to prepare link statement")?;
 
+        let now = OffsetDateTime::now_utc();
         let links = stmt
             .query_map(params![], |row| {
                 let info = serde_rusqlite::from_row::<DbLinkInfo>(row).unwrap();
@@ -112,11 +124,11 @@ async fn get_links(db: Connection) -> anyhow::Result<Vec<Link>> {
                 let link = Link {
                     key: info.key,
                     created_by: info.created_by,
-                    created_at: OffsetDateTime::from_unix_timestamp(info.created_at).unwrap(),
+                    created_ago: (now - OffsetDateTime::from_unix_timestamp(info.created_at).unwrap()).try_into().unwrap(),
                     used_by: info.used_by,
-                    used_at: info
+                    used_ago: info
                         .used_at
-                        .map(|at| OffsetDateTime::from_unix_timestamp(at).unwrap()),
+                        .map(|at| (now - OffsetDateTime::from_unix_timestamp(at).unwrap()).try_into().unwrap()),
                 };
 
                 Ok(link)
@@ -136,11 +148,11 @@ pub(crate) struct DeleteForm {
 }
 
 pub(crate) async fn delete_page(
-    Authorize(name): Authorize<"invite", "write">,
+    AuthorizeCookie(payload): AuthorizeCookie<{ Some("admin") }>,
     Form(DeleteForm { key }): Form<DeleteForm>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
-    let redirect = match delete_invite_impl(key, db, name).await {
+    let redirect = match delete_invite_impl(key, db, payload.name).await {
         Ok(()) => "/admin/invite#removed".into(),
         Err(e) => format!(
             "/admin/invite?error={}",
@@ -180,7 +192,7 @@ pub(crate) async fn delete_invite_impl(
 }
 
 pub(crate) async fn create_page(
-    Authorize(name): Authorize<"invite", "write">,
+    AuthorizeCookie(payload): AuthorizeCookie<{ Some("admin") }>,
     Form(services): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
@@ -190,7 +202,7 @@ pub(crate) async fn create_page(
         .collect::<Vec<_>>();
     let services = services.join(",");
 
-    let redirect = match create_invite_impl(db, name, services).await {
+    let redirect = match create_invite_impl(db, payload.name, services).await {
         Ok(()) => "/admin/invite#added".into(),
         Err(e) => format!(
             "/admin/invite?error={}",

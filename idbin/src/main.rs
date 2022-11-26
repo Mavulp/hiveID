@@ -4,16 +4,17 @@ use askama::Template;
 use axum::{
     body::{self, boxed, BoxBody, Empty, Full},
     http::{Response, StatusCode},
-    routing::{get, post},
-    Extension, Router,
+    routing::{get, post, get_service},
+    Extension, Router, response::IntoResponse,
 };
 use error::Error;
-use idlib::{Authorizations, IdpClient, SecretKey};
+use idlib::{IdpClient, SecretKey, Variables};
 
 use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
 use status::{status_poll_loop, Statuses};
 use tokio::sync::RwLock;
+use tower_http::services::ServeDir;
 
 mod account;
 mod audit;
@@ -21,6 +22,7 @@ mod error;
 mod home;
 mod invite;
 mod login;
+// mod oauth;
 mod permissions;
 mod register;
 mod status;
@@ -32,13 +34,19 @@ const MIGRATIONS: [M; 1] = [M::up(include_str!("../migrations/0001_initial.sql")
 pub fn api_route(
     db: tokio_rusqlite::Connection,
     secret_key: SecretKey,
-    _serve_dir: PathBuf,
-    authorizations: Authorizations,
-    services: Services,
+    serve_dir: PathBuf,
     statuses: Statuses,
 ) -> Router {
+    let variables = Variables {
+        idp_fetch_permission_address: None,
+        idp_refresh_address: String::from("/refresh"),
+        idp_login_address: String::from("/login"),
+        service_name: String::from("idbin"),
+    };
+
+    let client = IdpClient::default();
+
     Router::new()
-        // .route("/api/streams/:stream", get(stream::get_streams))
         .route("/", get(home::page))
         .route("/login", get(login::page))
         .route("/register", get(register::page))
@@ -54,43 +62,22 @@ pub fn api_route(
         .route("/api/health", get(health))
         .route("/api/login", post(login::post_login))
         .route("/api/permissions", post(permissions::post_permissions))
-        .route("/api/permissions", get(permissions::get_permissions))
         .route("/api/account", post(account::post_account))
+        .nest("/auth", idlib::api_route(client, None))
+        .nest(
+            "/static/",
+            get_service(ServeDir::new(serve_dir)).handle_error(handle_error),
+        )
         .layer(Extension(IdpClient::default()))
+        .layer(Extension(Arc::new(variables)))
         .layer(Extension(db))
         .layer(Extension(secret_key))
-        .layer(Extension(services))
-        .layer(Extension(authorizations))
         .layer(Extension(statuses))
 }
 
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct ServiceConfig {
-    service: HashMap<String, Service>,
+async fn handle_error(_err: std::io::Error) -> impl IntoResponse {
+    (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
 }
-
-#[derive(Deserialize, Serialize, Clone)]
-#[serde(rename_all = "kebab-case")]
-pub struct Service {
-    nice_name: String,
-    description: Option<String>,
-    url: String,
-    auth_url: String,
-    health_url: String,
-    show_on_dashboard: Option<bool>,
-    required_policy: Option<String>,
-    default_roles: Option<Vec<String>>,
-}
-
-impl Service {
-    pub fn is_restricted(&self) -> bool {
-        self.required_policy.is_some()
-    }
-}
-
-#[derive(Clone)]
-pub struct Services(Arc<HashMap<String, Service>>);
 
 pub fn into_response<T: Template>(t: &T, ext: &str) -> Response<BoxBody> {
     match t.render() {
@@ -120,18 +107,9 @@ async fn health() -> Result<Response<BoxBody>, Error> {
 
 async fn run() {
     let config_file: PathBuf = env::var("CONFIG_FILE").expect("CONFIG_FILE not set").into();
-    let casbin_path: PathBuf = env::var("CASBIN_POLICY")
-        .expect("CASBIN_POLICY not set")
-        .into();
     let db_path: PathBuf = env::var("DB_PATH").expect("DB_PATH not set").into();
     let serve_dir: PathBuf = env::var("SERVE_DIR").expect("SERVE_DIR not set").into();
     let secret_key = SecretKey::from_env();
-
-    let config = fs::read(config_file).expect("Failed to read config file");
-    let services: ServiceConfig = toml::from_slice(&config).expect("Failed to parse config file");
-    let services = Services(Arc::new(services.service));
-
-    let authorizations = Authorizations::from_file(casbin_path).await;
 
     let bind_addr: SocketAddr = env::var("BIND_ADDRESS")
         .expect("BIND_ADDRESS not set")
@@ -152,16 +130,14 @@ async fn run() {
     let statuses = Statuses(Arc::new(RwLock::new(Vec::new())));
 
     let router = api_route(
-        conn,
+        conn.clone(),
         secret_key,
         serve_dir,
-        authorizations,
-        services.clone(),
         statuses.clone(),
     );
 
     tokio::spawn(async move {
-        status_poll_loop(statuses, services).await;
+        status_poll_loop(conn, statuses).await;
     });
 
     axum::Server::try_bind(&bind_addr)

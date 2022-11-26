@@ -1,9 +1,9 @@
-use std::fmt::Display;
+use std::{fmt::Display, time::Duration};
 
 use anyhow::Context;
 use askama::Template;
 use axum::{body::BoxBody, http::Response, Extension};
-use idlib::Authorize;
+use idlib::AuthorizeCookie;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -85,21 +85,34 @@ pub struct UserPermissionChange {
 pub struct Action {
     action: AuditAction,
     performed_by: String,
-    at: OffsetDateTime,
+    time_ago: Duration,
 }
 
 #[derive(Template)]
 #[template(path = "audit.html")]
 struct AuditLogPageTemplate<'a> {
+    current_page: &'static str,
+    admin: bool,
     actions: &'a [Action],
 }
 
+mod filters {
+    use std::time::Duration;
+    use relativetime::NegativeRelativeTime;
+
+    pub fn duration(duration: &Duration) -> ::askama::Result<String> {
+        Ok(duration.to_relative_in_past())
+    }
+}
+
 pub(crate) async fn page(
-    Authorize(_): Authorize<"audit", "read">,
+    AuthorizeCookie(_): AuthorizeCookie<{ Some("admin") }>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
     let audit_logs = db.call(get_audit_logs).await?;
     let template = AuditLogPageTemplate {
+        current_page: "/admin/audit",
+        admin: true,
         actions: &audit_logs,
     };
 
@@ -113,12 +126,14 @@ fn get_audit_logs(conn: &mut rusqlite::Connection) -> anyhow::Result<Vec<Action>
 
     let mut rows = stmt.query(params![])?;
 
+    let now = OffsetDateTime::now_utc();
+
     let mut audit_logs = Vec::new();
     while let Some(row) = rows.next()? {
         audit_logs.push(Action {
             action: serde_json::de::from_str(row.get_ref(0)?.as_str()?)?,
             performed_by: row.get::<_, String>(1)?,
-            at: OffsetDateTime::from_unix_timestamp(row.get(2)?)?,
+            time_ago: (now - OffsetDateTime::from_unix_timestamp(row.get(2)?)?).try_into().unwrap(),
         });
     }
 

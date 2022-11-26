@@ -1,7 +1,9 @@
-<!DOCTYPE html>
-<title>Invites</title>
+{% extends "page.html" %}
+
+{% block title %}Invites - {% endblock %}
+
+{% block header %}
 <style>
-table, th, td { border: 1px inset black; text-align: center; }
 .ok { background-color: #a9ffa9; }
 .bad { background-color: #ffa9a9; }
 .pending { background-color: #ffffa9; }
@@ -9,42 +11,19 @@ table, th, td { border: 1px inset black; text-align: center; }
 #removed:target, #added:target { display: block !important; }
 fieldset { display: inline-block; }
 </style>
-<meta charset="utf-8" />
+{% endblock %}
 
-<h1>Admin dashboard</h1>
-<nav>
-<a href="permissions">Permissions</a>
-<a href="audit">Audit</a>
-<i>Invites</i>
-</nav>
-
-<h2>Create invite</h2>
+{% block content %}
+<h2>Create new invite</h2>
+<p>Create a new invite link which can be used to register an account.
 <form action="/admin/invite/create" method="post">
-<fieldset>
-<legend>Choose access to services</legend>
-
-{% for (name, service) in services %}
-    {% if service.is_restricted() %}
-<input type="checkbox" name="{{ name }}" />
-<label for="{{ name }}">{{ service.nice_name }}</label>
-<br>
-    {% endif %}
-{% endfor %}
-</fieldset>
-<br>
 <input type="submit" value="Create invite" />
 </form>
 
-
 <h2>All invites</h2>
-<h3>Legend</h3>
-<table>
-<tr>
-<th class="ok">Used
-<th class="pending">Pending
-</table>
-<p>
-<table>
+<p>A list of all pending and consumed invites. A <span class="ok">green</span> background means the link has been consumed, while a <span class="pending">yellow</span> background means it has yet to been activated.
+<p><span class="pending">Pending</span> invites can be revoked.
+<table class="invite-list">
 <tr>
 <th>Link
 <th>Created by
@@ -61,21 +40,23 @@ fieldset { display: inline-block; }
 <td class="pending"><a href="/register?invite={{ link.key }}">{{ link.key }}</a>
     {% endif %}
 <td>{{ link.created_by }}
-<td>{{ link.created_at }}
+<td>{{ link.created_ago|duration }}
 <td>
 {% if let Some(used_by) = link.used_by %}
     {{ used_by }}
 {% endif %}
 <td>
-{% if let Some(used_at) = link.used_at %}
-    {{ used_at }}
+{% if let Some(used_ago) = link.used_ago %}
+    {{ used_ago|duration }}
 {% endif %}
-<td>
     {% if let None = link.used_by %}
+<td>
 <form action="/admin/invite/delete" method="post">
 <input type="hidden" name="key" value="{{ link.key }}" />
 <input type="submit" value="Revoke" />
 </form>
+    {% else %}
+<td class="hatch">
     {% endif %}
 {% endfor %}
 </table>
@@ -87,3 +68,4 @@ fieldset { display: inline-block; }
 <p id="removed" class="success">Deleted invite link!
 <p id="added" class="success">Created invite link!
 {% endmatch %}
+{% endblock %}

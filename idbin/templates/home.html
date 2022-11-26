@@ -1,63 +1,29 @@
-<!DOCTYPE html>
-<title>Home</title>
-<style>
-:root {
-  --shadow-color: 43deg 31% 62%;
-  --shadow-elevation-low:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.33),
-    0.9px 1px 1.5px -1.3px hsl(var(--shadow-color) / 0.32),
-    2.2px 2.4px 3.6px -2.6px hsl(var(--shadow-color) / 0.31);
-  --shadow-elevation-medium:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.35),
-    1.8px 1.9px 2.9px -0.9px hsl(var(--shadow-color) / 0.34),
-    4.5px 4.9px 7.4px -1.7px hsl(var(--shadow-color) / 0.33),
-    11px 12px 18.1px -2.6px hsl(var(--shadow-color) / 0.33);
-  --shadow-elevation-high:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.32),
-    3px 3.3px 5px -0.4px hsl(var(--shadow-color) / 0.32),
-    5.6px 6.1px 9.2px -0.7px hsl(var(--shadow-color) / 0.32),
-    9.3px 10.1px 15.2px -1.1px hsl(var(--shadow-color) / 0.31),
-    15px 16.3px 24.6px -1.5px hsl(var(--shadow-color) / 0.31),
-    23.5px 25.6px 38.6px -1.9px hsl(var(--shadow-color) / 0.31),
-    35.9px 39.1px 58.9px -2.2px hsl(var(--shadow-color) / 0.3),
-    52.9px 57.7px 86.9px -2.6px hsl(var(--shadow-color) / 0.3);
-}
-html, body { color: #333; background-color: #fff9ea; height: 100%; padding: 0; margin: 0; font-family: sans-serif; }
-.a { display: table; width: 100%; height: 100%; }
-.b { display: table-cell; vertical-align: middle; padding: 3em; }
-.cards { text-align: center; }
-nav { position: absolute; right: 0; margin: 0.5em; font-size: 1.25em; font-weight: bold; }
-.cool { border: 1px solid #333; border-radius: 4px; box-shadow: 3px 3px 0px 0px #ccc; }
-table { border-spacing: 0; }
-.error { background-color: #ffc8c8; color: #300; border-radius: 0 0 4px 4px; margin: 0 -0.3em -0.3em -0.3em; padding: 0.3em; }
+{% extends "page.html" %}
 
-.card { display: inline-block; text-align: left; vertical-align: middle; background-color: #fff; border-radius: 4px; padding: 0.3em; margin: 0.75em; box-shadow: var(--shadow-elevation-medium); white-space: nowrap; max-width: 30em; }
-.card > img { margin: 0.2em; vertical-align: center; }
-.card-text { display: inline-block; white-space: normal; vertical-align: top; width: calc(100% - 64px); max-height: 64px; overflow: scroll; }
-</style>
-<meta charset="utf-8" />
+{% block title %}Home - {% endblock %}
 
-<nav>
-Dashboard
-<a href="/account">Settings</a>
-</nav>
+{% block header %}
+{% endblock %}
 
-<div class="a">
-<div class="b">
-<div class="cards">
-<h1>Dashboard</h1>
+{% block content %}
+<h2>HiveID</h2>
+<p>HiveID is a site for managing accounts across many services in the Hivecom community.
+<table class="services">
+<tr>
+<th>Service
+<th>Description
+<th>Status
 
-{% for (name, service, status) in services %}
-<div class="card">
-<img src="broke" width=64 height=64 />
-<div class="card-text">
-<a href="/redirect?service={{ name }}"><h3 style="margin:0;">{{ service.nice_name }}</h3></a>
-{% if let Some(desc) = service.description %}
-<span>{{ desc }}</span>
+{% for service in services %}
+<tr>
+<td><a href="/redirect?service={{ service.name }}">{{ service.nice_name }}</a>
+<td>{{ service.desc }}
+<td>
+{% if let Some(code) = service.status %}
+{{ code }}
+{% else %}
+N/A
 {% endif %}
-</div>
-{% if !status %}
-<div class="error">Service is down. See <a href="/status">Status</a> for more information.</div>
-{% endif %}
-</div>
 {% endfor %}
+</table>
+{% endblock %}

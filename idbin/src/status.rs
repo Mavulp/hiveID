@@ -8,13 +8,15 @@ use axum::{
 };
 use futures::{stream, StreamExt};
 use reqwest::Client;
-use tokio::{sync::RwLock, time::sleep};
+use tokio::{time::sleep, sync::RwLock};
 
-use crate::{error::Error, into_response, Service, Services};
+use crate::Connection;
+use crate::{error::Error, into_response};
 
-pub async fn status_poll_loop(Statuses(statuses): Statuses, Services(services): Services) {
+pub async fn status_poll_loop(db: Connection, Statuses(statuses): Statuses) {
     let client = Client::new();
 
+    /*
     loop {
         let services = services
             .iter()
@@ -42,9 +44,10 @@ pub async fn status_poll_loop(Statuses(statuses): Statuses, Services(services): 
         *statuses.write().await = new_statuses;
 
         sleep(Duration::from_secs(60)).await;
-    }
+    }*/
 }
 
+#[derive(Clone)]
 pub struct Status {
     pub nice_name: String,
     pub name: String,
@@ -71,6 +74,7 @@ pub(crate) async fn page(
     Extension(Statuses(statuses)): Extension<Statuses>,
 ) -> Result<Response<BoxBody>, Error> {
     let statuses = statuses.read().await;
+
     let template = StatusPageTemplate {
         statuses: &statuses,
     };

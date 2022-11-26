@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::Context;
 use askama::Template;
@@ -10,9 +10,8 @@ use axum::{
     Extension, Form, Json, TypedHeader,
 };
 
-use casbin::{CoreApi, MgmtApi, RbacApi};
 use futures::{stream, StreamExt};
-use idlib::{ApiAuthorize, Authorizations, Authorize, IdpClient, SecretKey};
+use idlib::{AuthorizeCookie, IdpClient, SecretKey};
 
 use jwt::{SignWithKey, VerifyWithKey};
 use log::{debug, warn};
@@ -24,14 +23,16 @@ use tokio_rusqlite::Connection;
 use crate::{
     audit::{self, UserPermissionChange},
     error::Error,
-    into_response, Service, Services,
+    into_response,
 };
 
 #[derive(Template)]
 #[template(path = "permissions.html")]
 struct PermissionPageTemplate {
-    all_roles: Vec<String>,
-    user_roles: Vec<(String, Vec<bool>)>,
+    current_page: &'static str,
+    admin: bool,
+    service_roles: Vec<ServiceRoles>,
+    user_roles: Vec<UserRoles>,
     error: Option<String>,
 }
 
@@ -56,32 +57,101 @@ async fn get_users(db: &Connection) -> anyhow::Result<Vec<String>> {
     .await
 }
 
+struct ServiceRoles {
+    service_name: String,
+    roles: Vec<String>,
+}
+
+async fn get_all_roles(db: &Connection) -> anyhow::Result<Vec<ServiceRoles>> {
+    db.call(|conn| {
+        let mut stmt = conn
+            .prepare("SELECT service, name FROM roles")
+            .context("Failed to prepare statement")?;
+        let results = stmt
+            .query_map(params![], |row| {
+                Ok((row.get(0).unwrap(), row.get(1).unwrap()))
+            })
+            .context("Failed to query users")?;
+
+        let mut service_roles = HashMap::new();
+
+        for result in results {
+            let (service, name) = result.context("Failed to collect roles")?;
+
+            service_roles
+                .entry(service)
+                .or_insert(Vec::new())
+                .push(name);
+        }
+
+        let service_roles = service_roles
+            .into_iter()
+            .map(|(k, v)| ServiceRoles {
+                service_name: k,
+                roles: v,
+            })
+            .collect::<Vec<ServiceRoles>>();
+
+        Ok(service_roles)
+    })
+    .await
+}
+
+struct UserRoles {
+    user: String,
+    roles: HashSet<String>,
+}
+
+async fn get_user_roles(db: &Connection) -> anyhow::Result<Vec<UserRoles>> {
+    db.call(|conn| {
+        let mut stmt = conn
+            .prepare(
+                "SELECT u.username, ur.role FROM users u \
+                LEFT JOIN user_roles ur \
+                ON u.username = ur.username",
+            )
+            .unwrap();
+        let results = stmt
+            .query_map(params![], |row| {
+                Ok((row.get(0).unwrap(), row.get(1).unwrap()))
+            })
+            .unwrap();
+
+        let mut user_roles = HashMap::new();
+
+        for result in results {
+            let (user, role) = result.unwrap();
+
+            let roles = user_roles.entry(user).or_insert(HashSet::new());
+
+            if let Some(role) = role {
+                roles.insert(role);
+            }
+        }
+
+        let user_roles = user_roles
+            .into_iter()
+            .map(|(k, v)| UserRoles { user: k, roles: v })
+            .collect::<Vec<UserRoles>>();
+
+        Ok(user_roles)
+    })
+    .await
+}
+
 pub(crate) async fn page(
+    AuthorizeCookie(_): AuthorizeCookie<{ Some("admin") }>,
     Query(params): Query<PermissionParams>,
     Extension(db): Extension<Connection>,
-    Extension(Authorizations(auth)): Extension<Authorizations>,
 ) -> Result<Response<BoxBody>, Error> {
-    let mut auth = auth.write().await;
-
     let users = get_users(&db).await?;
-    let mut all_roles = auth.get_all_roles();
-    all_roles.sort_unstable();
-
-    let user_roles = users
-        .iter()
-        .map(|u| {
-            (u.clone(), {
-                let user_roles = auth.get_roles_for_user(&u, None);
-                all_roles
-                    .iter()
-                    .map(|r| user_roles.contains(r))
-                    .collect::<Vec<_>>()
-            })
-        })
-        .collect::<Vec<_>>();
+    let service_roles = get_all_roles(&db).await?;
+    let user_roles = get_user_roles(&db).await?;
 
     let template = PermissionPageTemplate {
-        all_roles,
+        current_page: "/admin/permissions",
+        admin: true,
+        service_roles,
         user_roles,
         error: params.error,
     };
@@ -90,21 +160,22 @@ pub(crate) async fn page(
 }
 
 pub(crate) async fn post_permissions(
-    Authorize(name): ApiAuthorize<"permissions", "write">,
+    AuthorizeCookie(payload): AuthorizeCookie<{ Some("admin") }>,
     Form(changes): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
-    Extension(services): Extension<Services>,
-    Extension(auth): Extension<Authorizations>,
     Extension(client): Extension<IdpClient>,
     Extension(key): Extension<SecretKey>,
 ) -> Result<Response<BoxBody>, Error> {
-    let redirect = match post_permissions_impl(changes, auth, services, client, key, db, name).await
-    {
+    let redirect = match post_permissions_impl(changes, client, db, payload.name).await {
         Ok(()) => "/admin/permissions#success".into(),
-        Err(e) => format!(
-            "/admin/permissions?error={}",
-            urlencoding::encode(&e.to_string())
-        ),
+        Err(e) => {
+            warn!("Failed to set permissions: {e:?}");
+
+            format!(
+                "/admin/permissions?error={}",
+                urlencoding::encode(&e.to_string())
+            )
+        }
     };
 
     let response = Response::builder()
@@ -118,40 +189,53 @@ pub(crate) async fn post_permissions(
 
 pub(crate) async fn post_permissions_impl(
     changes: Vec<(String, String)>,
-    Authorizations(auth): Authorizations,
-    Services(services): Services,
     IdpClient(client): IdpClient,
-    key: SecretKey,
     db: Connection,
-    name: String,
+    performed_by: String,
 ) -> Result<(), Error> {
-    let mut auth = auth.write().await;
-
     let mut audit_changes = HashMap::new();
-    for (id, value) in changes {
-        let value = value == "true";
-        let (name, role) = id.split_once('+').context("Invalid ID")?;
-
-        debug!("Setting role {role:?} for user {name:?} to {value}");
-
-        let (ref mut added, ref mut removed) = audit_changes
-            .entry(name.to_string())
-            .or_insert((Vec::new(), Vec::new()));
-
-        if value {
-            added.push(role.to_string());
-            auth.add_role_for_user(name, role, None)
-                .await
-                .context("Failed to add role for user")?;
-        } else {
-            removed.push(role.to_string());
-            auth.delete_role_for_user(name, role, None)
-                .await
-                .context("Failed to remove role for user")?;
-        }
-    }
 
     db.call(move |conn| {
+        for (id, value) in changes {
+            let value = value == "true";
+
+            let mut split = id.split('+');
+            let name = split.next().context("Invalid ID")?;
+            let service = split.next().context("Invalid ID")?;
+            let role = split.next().context("Invalid ID")?;
+
+            debug!("Setting role {service:?}/{role:?} for user {name:?} to {value}");
+
+            let (ref mut added, ref mut removed) = audit_changes
+                .entry(name.to_string())
+                .or_insert((Vec::new(), Vec::new()));
+
+            if value {
+                added.push(format!("{service}/{role}"));
+
+                conn.execute(
+                    "INSERT INTO user_roles (username, service, role) \
+                    VALUES (?1, ?2, ?3)",
+                    params![&name, &service, &role],
+                )
+                .context("Failed to add permissions")?;
+            } else {
+                removed.push(format!("{service}/{role}"));
+
+                let rows = conn
+                    .execute(
+                        "DELETE FROM user_roles \
+                    WHERE username = ?1 AND service = ?2 AND role = ?3",
+                        params![&name, &service, &role],
+                    )
+                    .context("Failed to remove permissions")?;
+
+                if rows == 0 {
+                    warn!("Tried to delete role but could not find in DB");
+                }
+            }
+        }
+
         audit::log(
             conn,
             audit::AuditAction::PermissionChange(
@@ -164,24 +248,14 @@ pub(crate) async fn post_permissions_impl(
                     })
                     .collect::<Vec<_>>(),
             ),
-            &name,
+            &performed_by,
         )
     })
     .await?;
 
-    debug!("Saving policy");
-    auth.save_policy().await.context("Failed to save policy")?;
+    // TODO: update services to invalidate previous token
 
-    let permissions = PermissionsResponse {
-        policy: auth.get_all_policy(),
-        group_policy: auth.get_all_grouping_policy(),
-    };
-
-    let token = "yup"
-        .sign_with_key(&*key.0)
-        .context("Failed to sign token")?;
-
-    let services = &*services.values().cloned().collect::<Vec<Service>>();
+    /*let services = &*services.values().cloned().collect::<Vec<Service>>();
     let responses = stream::iter(services)
         .map(|service| {
             let permissions = permissions.clone();
@@ -210,35 +284,7 @@ pub(crate) async fn post_permissions_impl(
         } else {
             warn!("Failed to update permissions for {service}: {status:?}");
         }
-    }
+    }*/
 
     Ok(())
-}
-
-#[derive(Clone, Serialize)]
-pub(crate) struct PermissionsResponse {
-    policy: Vec<Vec<String>>,
-    group_policy: Vec<Vec<String>>,
-}
-
-pub(crate) async fn get_permissions(
-    TypedHeader(Authorization(bearer)): TypedHeader<Authorization<Bearer>>,
-    Extension(Authorizations(auth)): Extension<Authorizations>,
-    Extension(SecretKey(secret_key)): Extension<SecretKey>,
-) -> Result<Json<PermissionsResponse>, Error> {
-    let claims: String = bearer
-        .token()
-        .verify_with_key(&*secret_key)
-        .context("Failed to verify bearer token")?;
-    dbg!(&claims);
-    if &claims != "yup" {
-        return Err(Error::Unathorized);
-    }
-
-    let auth = auth.read().await;
-
-    Ok(Json(PermissionsResponse {
-        policy: auth.get_all_policy(),
-        group_policy: auth.get_all_grouping_policy(),
-    }))
 }

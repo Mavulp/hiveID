@@ -3,6 +3,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use anyhow::Context;
 use async_trait::async_trait;
 use axum::{
     body::{boxed, Empty},
@@ -14,14 +15,13 @@ use axum::{
     response::{IntoResponse, Response},
     Extension, Json,
 };
-use casbin::CoreApi;
 use jwt::VerifyWithKey;
-use log::debug;
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
 
-use crate::{Authorizations, Cookies, SecretKey, Variables};
+use crate::{Cookies, SecretKey, Variables};
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Operation {
@@ -29,19 +29,13 @@ pub enum Operation {
     Write,
 }
 
-pub struct Authorize<
-    const RESOURCE: &'static str = "",
-    const OP: &'static str = "",
-    const API: bool = false,
->(pub String);
-
-pub type ApiAuthorize<const RESOURCE: &'static str = "", const OP: &'static str = ""> =
-    Authorize<RESOURCE, OP, true>;
+pub struct AuthorizeCookie<const GROUP: Option<&'static str> = None>(pub Payload);
 
 #[derive(Serialize, Deserialize)]
 pub struct Payload {
     pub name: String,
     pub issued_at: u64,
+    pub groups: Vec<String>,
 }
 
 #[derive(Debug, Error)]
@@ -58,17 +52,14 @@ pub enum AuthorizationRejection {
     InvalidToken,
     #[error("Your session has expired, please login again")]
     ExpiredToken,
-    #[error("Not allowed to perform {1:?} on {0:?}")]
-    Forbidden(&'static str, &'static str),
-    #[error("{0}")]
-    Casbin(#[from] casbin::Error),
+    #[error("User is not part of group {0:?}")]
+    Forbidden(&'static str),
     #[error("{0}")]
     Generic(#[from] anyhow::Error),
 }
 
 #[async_trait]
-impl<B, const RESOURCE: &'static str, const OP: &'static str, const API: bool> FromRequest<B>
-    for Authorize<RESOURCE, OP, API>
+impl<B, const GROUP: Option<&'static str>> FromRequest<B> for AuthorizeCookie<GROUP>
 where
     B: Send,
 {
@@ -80,33 +71,24 @@ where
         let token = match jar.get("__auth") {
             Some(token) => token,
             None => {
-                if API {
-                    return Err(AuthorizationRejection::MissingApiAuth);
-                } else {
-                    // redirect to IDP login site when not in an API call (eg. rendering html
-                    // templates)
-                    debug!("Failed to find auth cookie. Redirecting to IDP");
+                debug!("Failed to find auth cookie. Redirecting to IDP");
 
-                    let Extension(variables) =
-                        Extension::<Arc<Variables>>::from_request(req).await?;
+                let Extension(variables) = Extension::<Arc<Variables>>::from_request(req).await?;
 
-                    let redirect = format!(
-                        "{}?service={}&redirect_to={}",
-                        variables.idp_login_address,
-                        variables.service_name,
-                        urlencoding::encode(req.uri().path())
-                    );
+                // TODO: use client ID instead of service name
+                let redirect = format!(
+                    "{}?service={}&redirect_to={}",
+                    variables.idp_login_address,
+                    variables.service_name,
+                    urlencoding::encode(req.uri().path())
+                );
 
-                    return Err(AuthorizationRejection::MissingAuth(redirect));
-                }
+                return Err(AuthorizationRejection::MissingAuth(redirect));
             }
         };
 
         let Extension(secret) = Extension::<SecretKey>::from_request(req).await?;
-        let Extension(Authorizations(enforcer)) =
-            Extension::<Authorizations>::from_request(req).await?;
-
-        let payload: Payload = token.value().verify_with_key(&*secret.0).unwrap();
+        let payload: Payload = token.value().verify_with_key(&*secret.0).context("Failed to parse JWT")?;
 
         let issued_at = Duration::from_secs(payload.issued_at);
         let now = SystemTime::UNIX_EPOCH.elapsed().unwrap();
@@ -116,14 +98,13 @@ where
             return Err(AuthorizationRejection::ExpiredToken);
         }
 
-        if !RESOURCE.is_empty() && !OP.is_empty() {
-            let enforcer = enforcer.read().await;
-            if !enforcer.enforce((&payload.name, RESOURCE, OP))? {
-                return Err(AuthorizationRejection::Forbidden(RESOURCE, OP));
+        if let Some(group) = GROUP {
+            if !payload.groups.iter().any(|s| s == group) {
+                return Err(AuthorizationRejection::Forbidden(group));
             }
         }
 
-        Ok(Authorize(payload.name))
+        Ok(AuthorizeCookie(payload))
     }
 }
 
@@ -143,12 +124,11 @@ impl IntoResponse for AuthorizationRejection {
         let status = match &self {
             AuthorizationRejection::Extension(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AuthorizationRejection::Generic(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            AuthorizationRejection::Casbin(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AuthorizationRejection::Headers(_) => StatusCode::BAD_REQUEST,
             AuthorizationRejection::InvalidToken | AuthorizationRejection::ExpiredToken => {
                 StatusCode::UNAUTHORIZED
             }
-            AuthorizationRejection::Forbidden(_, _) => StatusCode::FORBIDDEN,
+            AuthorizationRejection::Forbidden(_) => StatusCode::FORBIDDEN,
             AuthorizationRejection::MissingApiAuth | AuthorizationRejection::MissingAuth(_) => {
                 StatusCode::UNAUTHORIZED
             }

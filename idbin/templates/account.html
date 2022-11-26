@@ -1,68 +1,14 @@
-<!DOCTYPE html>
-<title>Account - {{ username }}</title>
-<style>
-:root {
-  --shadow-color: 43deg 31% 62%;
-  --shadow-elevation-low:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.33),
-    0.9px 1px 1.5px -1.3px hsl(var(--shadow-color) / 0.32),
-    2.2px 2.4px 3.6px -2.6px hsl(var(--shadow-color) / 0.31);
-  --shadow-elevation-medium:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.35),
-    1.8px 1.9px 2.9px -0.9px hsl(var(--shadow-color) / 0.34),
-    4.5px 4.9px 7.4px -1.7px hsl(var(--shadow-color) / 0.33),
-    11px 12px 18.1px -2.6px hsl(var(--shadow-color) / 0.33);
-  --shadow-elevation-high:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.32),
-    3px 3.3px 5px -0.4px hsl(var(--shadow-color) / 0.32),
-    5.6px 6.1px 9.2px -0.7px hsl(var(--shadow-color) / 0.32),
-    9.3px 10.1px 15.2px -1.1px hsl(var(--shadow-color) / 0.31),
-    15px 16.3px 24.6px -1.5px hsl(var(--shadow-color) / 0.31),
-    23.5px 25.6px 38.6px -1.9px hsl(var(--shadow-color) / 0.31),
-    35.9px 39.1px 58.9px -2.2px hsl(var(--shadow-color) / 0.3),
-    52.9px 57.7px 86.9px -2.6px hsl(var(--shadow-color) / 0.3);
-}
-html, body { height: 100%; padding: 0; margin: 0; background-color: #fff9ea; color: #333; font-family: sans-serif; }
-nav { position: absolute; right: 0; margin: 0.5em; font-size: 1.25em; font-weight: bold; }
-table { border-spacing: 0; }
-tr { margin-top: 0.1em; }
-td { padding: 0.5em; }
-.a { display: table; width: 100%; height: 100%; }
-.b { display: table-cell; vertical-align: middle; padding: 3em; text-align: center; }
-.cool { border-radius: 4px; box-shadow: var(--shadow-elevation-medium); }
-.update { text-align: end; display: inline-block; background-color: #fff; }
+{% extends "page.html" %}
 
-.footer { border-radius: 0 0 4px 4px; margin: 0 -0.3em -0.3em -0.3em; padding: 1em; text-align: center; }
-.error { background-color: #ffc8c8; color: #300;  }
-#success { display: none; background-color: #c8ffc8; color: #030; }
-#success:target { display: table-cell !important; }
-</style>
-<meta charset="utf-8" />
+{% block title %}Account - {% endblock %}
 
-<nav>
-{% if permissions.permissions %}
-<a href="/admin/permissions">Permissions</a>
-{% endif %}
-{% if permissions.audit %}
-<a href="/admin/audit">Audit</a>
-{% endif %}
-{% if permissions.invite %}
-<a href="/admin/invite">Invite</a>
-{% endif %}
-{% if permissions.permissions || permissions.audit || permissions.invite %}
-|
-{% endif %}
-<a href="/">Dashboard</a>
-Settings
-</nav>
-
-<div class="a">
-<div class="b">
-
-<form class="cool update" action="/account" method="post" >
-<h2 style="text-align:center;">Account settings</h2>
-
-<table style="margin:auto;">
+{% block header %}
+{% endblock %}
+{% block content %}
+<h2>Account settings</h2>
+<p>Account settings. You can change your email or password here.
+<form action="/account" method="post" >
+<table class="account-details">
 <tr>
 <td><label for="username">Username:</label>
 <td><input type="text" name="username" value="{{ username }}" readonly="readonly" required />
@@ -85,11 +31,12 @@ Settings
 
 <tr>
 <td colspan="2"><input type="submit" style="width:100%;" value="Update" />
-{% if let Some(error) = error %}
-<tr>
-<td colspan=2 class="footer error">{{ error }}
-{% else %}
-<tr>
-<td colspan=2 id="success" class="footer">Updated settings!
-{% endif %}
 </table>
+</form>
+<br>
+<form action="/auth/logout" method="post" >
+<table class="account-details">
+<td colspan="2"><input type="submit" style="width:100%;" value="Logout" />
+</table>
+</form>
+{% endblock %}

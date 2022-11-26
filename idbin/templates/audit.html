@@ -1,22 +1,18 @@
-<!DOCTYPE html>
-<title>Audit</title>
+{% extends "page.html" %}
+
+{% block title %}Audit log - {% endblock %}
+
+{% block header %}
 <style>
-table, th, td { border: 1px inset black; }
 .ok { background-color: #a9ffa9; }
 .bad { background-color: #ffa9a9; }
 </style>
-<meta charset="utf-8" />
+{% endblock %}
 
-<h1>Admin dashboard</h1>
-<nav>
-<a href="permissions">Permissions</a>
-<i>Audit</i>
-<a href="invite">Invites</a>
-</nav>
-
-<h2>Audit log</h2>
-
-<table>
+{% block content %}
+<h2>Audit logs</h2>
+<p>Logs of all actions against the account database.
+<table class="audit-logs">
 <tr>
 <th>Action
 <th>User
@@ -26,7 +22,6 @@ table, th, td { border: 1px inset black; }
 <tr>
 <td>{{ action.action|safe }}
 <td>{{ action.performed_by }}
-<td>{{ action.at }}
+<td>{{ action.time_ago|duration }}
 {% endfor %}
-
-</table>
+{% endblock %}

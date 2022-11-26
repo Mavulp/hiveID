@@ -11,8 +11,7 @@ use axum::{
     Extension, Form,
 };
 
-use casbin::{CoreApi, Enforcer};
-use idlib::{ApiAuthorize, Authorizations, Authorize};
+use idlib::{AuthorizeCookie, Payload};
 use rusqlite::{params, OptionalExtension};
 use serde::Deserialize;
 use tokio_rusqlite::Connection;
@@ -26,9 +25,10 @@ use crate::{
 #[derive(Template)]
 #[template(path = "account.html")]
 struct AccountPageTemplate {
+    current_page: &'static str,
     username: String,
     email: String,
-    permissions: AccountPermissions,
+    admin: bool,
     error: Option<String>,
 }
 
@@ -38,22 +38,19 @@ pub(crate) struct AccountParams {
 }
 
 pub(crate) async fn page(
-    Authorize(username): Authorize,
+    AuthorizeCookie(payload): AuthorizeCookie,
     Query(params): Query<AccountParams>,
-    Extension(Authorizations(auth)): Extension<Authorizations>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
-    let auth = auth.read().await;
-    let permissions = get_permissions(&auth, &username)?;
-    render_page(username, params.error, permissions, db).await
+    render_page(payload, params.error, db).await
 }
 
 pub(crate) async fn post_page(
-    Authorize(name): Authorize,
+    AuthorizeCookie(payload): AuthorizeCookie,
     Form(update): Form<AccountUpdate>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
-    let redirect = match post_account_impl(update.clone(), db, name).await {
+    let redirect = match post_account_impl(update.clone(), db, payload.name).await {
         Ok(()) => "/account#success".into(),
         Err(e) => format!("/account?error={}", urlencoding::encode(&e.to_string())),
     };
@@ -67,7 +64,7 @@ pub(crate) async fn post_page(
     Ok(response)
 }
 
-fn get_permissions(enforcer: &Enforcer, username: &str) -> anyhow::Result<AccountPermissions> {
+/*fn get_permissions(enforcer: &Enforcer, username: &str) -> anyhow::Result<AccountPermissions> {
     let permissions = enforcer.enforce((username, "permissions", "read"))?;
     let audit = enforcer.enforce((username, "audit", "read"))?;
     let invite = enforcer.enforce((username, "invite", "read"))?;
@@ -77,7 +74,7 @@ fn get_permissions(enforcer: &Enforcer, username: &str) -> anyhow::Result<Accoun
         audit,
         invite,
     })
-}
+}*/
 
 async fn get_email(name: String, db: Connection) -> anyhow::Result<String> {
     let email = db
@@ -93,24 +90,18 @@ async fn get_email(name: String, db: Connection) -> anyhow::Result<String> {
     Ok(email)
 }
 
-struct AccountPermissions {
-    audit: bool,
-    invite: bool,
-    permissions: bool,
-}
-
 async fn render_page(
-    username: String,
+    payload: Payload,
     error: Option<String>,
-    permissions: AccountPermissions,
     db: Connection,
 ) -> Result<Response<BoxBody>, Error> {
-    let email = get_email(username.clone(), db).await?;
+    let email = get_email(payload.name.clone(), db).await?;
 
     let template = AccountPageTemplate {
-        username,
+        current_page: "/account",
+        username: payload.name,
         email,
-        permissions,
+        admin: payload.groups.iter().any(|s|s=="admin"),
         error,
     };
 
@@ -126,11 +117,11 @@ pub(crate) struct AccountUpdate {
 }
 
 pub(crate) async fn post_account(
-    Authorize(name): ApiAuthorize,
+    AuthorizeCookie(payload): AuthorizeCookie,
     Form(update): Form<AccountUpdate>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
-    post_account_impl(update.clone(), db.clone(), name.clone()).await?;
+    post_account_impl(update.clone(), db.clone(), payload.name).await?;
 
     let response = Response::builder()
         .status(StatusCode::OK)

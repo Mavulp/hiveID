@@ -16,7 +16,6 @@ thiserror = "1.0.31"
 tower-http = { version = "0.3.4", features = ["fs"] }
 jwt = "0.16"
 async-trait = "0.1.57"
-casbin = "2.0.9"
 hmac = "0.12.1"
 sha2 = "0.10.2"
 base64 = "0.13.0"

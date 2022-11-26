@@ -13,16 +13,14 @@ use axum::{
     Extension, Form,
 };
 
-use casbin::RbacApi;
-use idlib::Authorizations;
-use log::debug;
+use log::{debug, warn};
 use rusqlite::params;
 use serde::Deserialize;
 
 use crate::{
     audit::{self, AuditAction},
     error::Error,
-    into_response, Connection, Services,
+    into_response, Connection,
 };
 
 #[derive(Template)]
@@ -75,6 +73,28 @@ async fn get_inviter(key: String, db: Connection) -> anyhow::Result<String> {
     Ok(inviter)
 }
 
+fn get_default_roles_for_invite(
+    conn: &mut rusqlite::Connection,
+    key: &str,
+) -> Vec<(String, String)> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT service, role FROM user_invite_default_roles \
+            WHERE \"key\" = ?1",
+        )
+        .unwrap();
+
+    stmt.query_map(params![&key], |row| {
+        Ok((
+            row.get::<_, String>(0).unwrap(),
+            row.get::<_, String>(1).unwrap(),
+        ))
+    })
+    .unwrap()
+    .collect::<Result<Vec<(String, String)>, _>>()
+    .unwrap()
+}
+
 #[derive(Clone, Deserialize)]
 pub(crate) struct Register {
     invite: String,
@@ -87,17 +107,22 @@ pub(crate) struct Register {
 pub(crate) async fn post_page(
     Form(register): Form<Register>,
     Extension(db): Extension<Connection>,
-    Extension(auth): Extension<Authorizations>,
-    Extension(services): Extension<Services>,
 ) -> Result<Response<BoxBody>, Error> {
-    let redirect = match post_register_impl(register.clone(), auth, services, db).await {
+    let redirect = match post_register_impl(register.clone(), db).await {
         Ok(()) => "/".into(),
-        Err(e) => format!(
-            "/register?invite={}&username={}&error={}",
-            register.invite,
-            register.username,
-            urlencoding::encode(&e.to_string())
-        ),
+        Err(e) => {
+            warn!(
+                "Failed to register account with invite ID {:?}: {:?}",
+                register.username, e
+            );
+
+            format!(
+                "/register?invite={}&username={}&error={}",
+                register.invite,
+                register.username,
+                urlencoding::encode(&e.to_string())
+            )
+        }
     };
 
     let response = Response::builder()
@@ -111,16 +136,10 @@ pub(crate) async fn post_page(
 
 pub(crate) async fn post_register_impl(
     register: Register,
-    Authorizations(auth): Authorizations,
-    Services(services): Services,
     db: Connection,
 ) -> Result<(), Error> {
-    if register.username.starts_with("role_") {
-        return Err(anyhow::anyhow!("Invalid username").into());
-    }
-
     if register.password != register.password2 {
-        return Err(anyhow::anyhow!("Passwords do not match").into());
+        return Err(Error::PasswordMismatch);
     }
 
     let salt = SaltString::generate(&mut OsRng);
@@ -135,34 +154,44 @@ pub(crate) async fn post_register_impl(
         .as_secs();
 
     let username = register.username.clone();
-    let mut auth = auth.write().await;
-    let service_access = db.call(move |conn| {
+
+    db.call(move |conn| {
         conn.execute(
-            "INSERT INTO users (username, password_hash, created_at, invite_key, email) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![&register.username, phc_string, now, &register.invite, register.email],
-        ).context("Failed to insert new user")?;
+            "INSERT INTO users (username, password_hash, created_at, invite_key, email) \
+            VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                &register.username,
+                phc_string,
+                now,
+                &register.invite,
+                register.email
+            ],
+        )
+        .context("Failed to insert new user")?;
 
-        let service_access: String = conn.query_row("SELECT services FROM user_invites WHERE \"key\" = ?1", params![&register.invite], |row| row.get(0))?;
+        let roles = get_default_roles_for_invite(conn, &register.invite);
 
-        audit::log(conn, AuditAction::ConsumeInvite(register.invite.clone()), &register.username)?;
+        for (service, role) in roles {
+            debug!("Assigning role {service:?}/{role:?} to {username:?}");
 
-        Ok::<String, anyhow::Error>(service_access)
+            conn.execute(
+                "INSERT INTO user_roles (username, service, role) \
+                VALUES (?1, ?2, ?3)",
+                params![&username, &service, &role],
+            )
+            .context("Failed to insert user role")?;
+        }
+
+        audit::log(
+            conn,
+            AuditAction::ConsumeInvite(register.invite.clone()),
+            &register.username,
+        )?;
+
+        Ok::<(), anyhow::Error>(())
     })
     .await
     .context("Failed to insert new account")?;
-
-    let service_access = service_access.split(',').collect::<Vec<_>>();
-    for service in service_access {
-        if let Some(roles) = services.get(service).and_then(|s| s.default_roles.as_ref()) {
-            for role in roles {
-                debug!("Assigning role {role:?} to {username:?}");
-
-                auth.add_role_for_user(&username, role, None)
-                    .await
-                    .context("Failed to add default roles for user")?;
-            }
-        }
-    }
 
     Ok(())
 }

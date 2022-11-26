@@ -9,14 +9,17 @@ use axum::{
     http::{Response, StatusCode},
     Extension, Form,
 };
+use hmac::{Hmac, Mac};
 use idlib::{Payload, SecretKey};
 use jwt::SignWithKey;
+use log::debug;
 use rusqlite::{params, OptionalExtension};
 use serde::Deserialize;
+use sha2::Sha256;
 use tokio_rusqlite::Connection;
 use url::Url;
 
-use crate::{error::Error, into_response, Services};
+use crate::{error::Error, into_response};
 
 #[derive(Template)]
 #[template(path = "login.html")]
@@ -35,12 +38,55 @@ pub(crate) struct LoginParams {
     username: Option<String>,
 }
 
+struct Service {
+    name: String,
+    nice_name: String,
+    id: String,
+    secret: String,
+    callback_url: String,
+}
+
+async fn get_service(db: &Connection, service_name: String) -> Option<Service> {
+    db.call(move |conn| {
+        conn.query_row(
+            "SELECT name, nice_name, id, secret, callback_url FROM services WHERE name = ?1",
+            params![&service_name],
+            |row| {
+                Ok(Service {
+                    name: row.get(0).unwrap(),
+                    nice_name: row.get(1).unwrap(),
+                    id: row.get(2).unwrap(),
+                    secret: row.get(3).unwrap(),
+                    callback_url: row.get(4).unwrap(),
+                })
+            },
+        )
+        .optional()
+        .unwrap()
+    })
+    .await
+}
+
+async fn get_groups_for_user(db: &Connection, username: String, service: String) -> Vec<String> {
+    db.call(move |conn| {
+        let mut stmt = conn
+            .prepare("SELECT role FROM user_roles WHERE username = ?1 AND service = ?2")
+            .unwrap();
+
+        stmt.query_map(params![&username, service], |row| Ok(row.get(0).unwrap()))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    })
+    .await
+}
+
 pub(crate) async fn page(
     Query(params): Query<LoginParams>,
-    Extension(Services(services)): Extension<Services>,
+    Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
-    let service = services
-        .get(&params.service)
+    let service = get_service(&db, params.service.clone())
+        .await
         .ok_or_else(|| Error::InvalidService(params.service.clone()))?;
 
     let template = LoginPageTemplate {
@@ -71,10 +117,8 @@ pub(crate) struct Login {
 pub(crate) async fn post_login(
     Form(login): Form<Login>,
     Extension(db): Extension<Connection>,
-    Extension(secret_key): Extension<SecretKey>,
-    Extension(services): Extension<Services>,
 ) -> Result<Response<BoxBody>, Error> {
-    match post_login_impl(login.clone(), db, secret_key, services).await {
+    match post_login_impl(login.clone(), db).await {
         Ok(response) => Ok(response),
         Err(Error::InvalidLogin) => {
             let redirect = format!(
@@ -97,23 +141,34 @@ pub(crate) async fn post_login(
 pub(crate) async fn post_login_impl(
     login: Login,
     db: Connection,
-    SecretKey(secret_key): SecretKey,
-    Services(services): Services,
 ) -> Result<Response<BoxBody>, Error> {
+    let service = get_service(&db, login.service.clone())
+        .await
+        .ok_or_else(|| Error::InvalidService(login.service.clone()))?;
+
+    let username = login.username.clone();
+
     let result: Option<(String, String)> = db
         .call(move |conn| {
             conn.query_row(
                 "SELECT username, password_hash \
                 FROM users WHERE username=?1",
                 params![login.username],
-                |row| Ok((row.get(0)?, row.get(1)?)),
+                |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())),
             )
             .optional()
+            .unwrap()
         })
-        .await
-        .context("Failed to query username")?;
+        .await;
 
-    let (username, password_hash) = result.ok_or(Error::InvalidLogin)?;
+    let (username, password_hash) = match result {
+        Some((username, password_hash)) => (username, password_hash),
+        None => {
+            debug!("Failed to find {:?}", username);
+
+            return Err(Error::InvalidLogin);
+        }
+    };
 
     let argon2 = Argon2::default();
     let parsed_hash = PasswordHash::new(&password_hash).context("Failed creating hash")?;
@@ -122,27 +177,34 @@ pub(crate) async fn post_login_impl(
         .verify_password(login.password.as_bytes(), &parsed_hash)
         .is_err()
     {
+        debug!("Failed to verify password for {username:?}");
+
         return Err(Error::InvalidLogin);
     }
 
-    let service = services
-        .get(&login.service)
-        .ok_or_else(|| Error::InvalidService(login.service.clone()))?;
+    let groups = get_groups_for_user(&db, username.clone(), service.name).await;
 
     let now = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
     let payload = Payload {
         name: username,
         issued_at: now,
+        groups,
     };
+
+    let secret_key = base64::decode(&service.secret).context("Failed to decode service secret")?;
+    let secret_key = Hmac::<Sha256>::new_from_slice(&secret_key)
+        .context("Failed to create HMAC from secret key")?;
+
     let token = payload
-        .sign_with_key(&*secret_key)
+        .sign_with_key(&secret_key)
         .context("Failed to sign payload")?;
 
-    let mut url = Url::parse(&service.auth_url).context("Failed to parse URL")?;
-    url.query_pairs_mut()
-        .clear()
-        .append_pair("redirect", &login.redirect)
-        .append_pair("token", &token);
+    let mut url = format!(
+        "{}?redirect_uri={}&token={}",
+        service.callback_url,
+        urlencoding::encode(&login.redirect),
+        urlencoding::encode(&token)
+    );
 
     let response = Response::builder()
         .header("Location", url.as_str())

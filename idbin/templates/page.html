@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<title>{% block title %}{{ title }}{% endblock %}HiveID</title>
+<link rel="stylesheet" href="/static/style.css" />
+<link rel="icon" href="/static/favicon.png">
+<meta charset="utf-8" />
+{% block head %}{% endblock %}
+
+
+{% block header %}{% endblock %}
+<main>
+<nav class="menu">
+<ul>
+<li>{% call navlink("/", "Home", current_page) %}
+<li>{% call navlink("/account", "Account", current_page) %}
+{% if admin %}
+<li>Admin/
+<ul>
+<li>{% call navlink("/admin/invite", "Invites", current_page) %}
+<li>{% call navlink("/admin/audit", "Audit log", current_page) %}
+<li>{% call navlink("/admin/permissions", "Permissions", current_page) %}
+</ul>
+{% endif %}
+</ul>
+</nav>
+
+{% block content %}{% endblock %}
+</main>
+
+{% macro navlink(uri, name, current_page) %}
+    {% if current_page == uri %}
+<b>{{ name }}</b>
+    {% else %}
+<a href="{{ uri }}">{{ name }}</a>   
+    {% endif %}
+{% endmacro %}

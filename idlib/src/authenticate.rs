@@ -9,6 +9,7 @@ use axum::{
         header::{COOKIE, LOCATION, SET_COOKIE},
         Response, StatusCode,
     },
+    response::IntoResponse,
     routing::{get, post, put},
     Extension, Router, TypedHeader,
 };
@@ -17,7 +18,7 @@ use futures::Future;
 use jwt::VerifyWithKey;
 use log::debug;
 
-use crate::{Authorizations, Error, IdpClient, Payload, PermissionResponse, SecretKey, Variables};
+use crate::{Error, IdpClient, Payload, PermissionResponse, SecretKey, Variables};
 
 #[derive(Clone)]
 pub struct AuthCallback(
@@ -32,9 +33,10 @@ pub struct AuthCallback(
 
 pub fn api_route(client: IdpClient, cb: Option<AuthCallback>) -> Router {
     let mut router = Router::new()
-        .route("/", get(get_auth))
-        .route("/", post(post_auth))
-        .route("/", put(put_auth))
+        .route("/authorize", get(authorize_with_cookie))
+        .route("/revoke", post(revoke_token))
+        .route("/logout", post(logout))
+        // .route("/", put(put_auth))
         .layer(Extension(client));
 
     if let Some(cb) = cb {
@@ -44,25 +46,20 @@ pub fn api_route(client: IdpClient, cb: Option<AuthCallback>) -> Router {
     router
 }
 
-pub fn api_extensions(
-    secret_key: SecretKey,
-    authorizations: Authorizations,
-    variables: Arc<Variables>,
-) -> Router {
+pub fn api_extensions(secret_key: SecretKey, variables: Arc<Variables>) -> Router {
     Router::new()
         .layer(Extension(secret_key))
-        .layer(Extension(authorizations))
         .layer(Extension(variables))
 }
 
-/// Consumes the response from the IDP and stores the received token as a
+/// Consumes the response from the IdP and stores the received token as a
 /// cookie in the client's browser.
-async fn get_auth(
+async fn authorize_with_cookie(
     Query(params): Query<HashMap<String, String>>,
     Extension(SecretKey(secret_key)): Extension<SecretKey>,
     cb: Option<Extension<AuthCallback>>,
 ) -> Result<Response<BoxBody>, Error> {
-    let redirect_to = params.get("redirect").ok_or(Error::MissingRedirect)?;
+    let redirect_uri = params.get("redirect_uri").ok_or(Error::MissingRedirect)?;
     let token = params.get("token").ok_or(Error::MissingToken)?;
 
     let payload: Payload = token
@@ -79,16 +76,35 @@ async fn get_auth(
     let cookie = create_auth_cookie(token);
 
     let response = Response::builder()
-        .header(LOCATION, redirect_to)
+        .header(LOCATION, redirect_uri)
         .header(SET_COOKIE, cookie.encoded().to_string())
-        .status(StatusCode::SEE_OTHER)
+        .status(StatusCode::FOUND)
         .body(boxed(Empty::new()))
         .unwrap();
 
     Ok(response)
 }
 
-/// Refreshes the token from the IDP by sending in a valid token.
+async fn revoke_token() -> Result<impl IntoResponse, Error> {
+    Ok(StatusCode::OK)
+}
+
+async fn logout(
+) -> Result<impl IntoResponse, Error> {
+    let cookie = create_logout_cookie();
+
+    let response = Response::builder()
+        .header(LOCATION, "/")
+        .header(SET_COOKIE, cookie.encoded().to_string())
+        .status(StatusCode::FOUND)
+        .body(boxed(Empty::new()))
+        .unwrap();
+
+    Ok(response)
+}
+
+// TODO: move this into authorize.rs?
+/// Refreshes the token from the IdP by sending in a valid token.
 async fn post_auth(
     Cookies(jar): Cookies,
     Extension(IdpClient(client)): Extension<IdpClient>,
@@ -122,38 +138,6 @@ async fn post_auth(
     Ok(response)
 }
 
-/// Updates the authorization data. Should only be called by the IDP when it
-/// wants to inform us that some access rules have changed.
-async fn put_auth(
-    body: String,
-    TypedHeader(Authorization(bearer)): TypedHeader<Authorization<Bearer>>,
-    Extension(SecretKey(secret_key)): Extension<SecretKey>,
-    Extension(auth): Extension<Authorizations>,
-) -> Result<Response<BoxBody>, Error> {
-    let claims: String = bearer
-        .token()
-        .verify_with_key(&*secret_key)
-        .context("Failed to verify bearer token")?;
-    if &claims != "yup" {
-        return Err(Error::Unathorized);
-    }
-
-    let permissions: PermissionResponse =
-        serde_json::de::from_str(&body).context("Failed to parse permission update")?;
-
-    auth.replace_policy(permissions.policy, permissions.group_policy)
-        .await
-        .context("Failed to replace policy on permission update")?;
-
-    debug!("Updated permissions from IDP");
-
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .body(boxed(Empty::new()))
-        .unwrap();
-    Ok(response)
-}
-
 #[derive(Clone)]
 pub struct Cookies(pub CookieJar);
 
@@ -177,6 +161,17 @@ where
 
         Ok(Cookies(jar))
     }
+}
+
+fn create_logout_cookie() -> Cookie<'static> {
+    let mut cookie = Cookie::new("__auth", "");
+    cookie.set_http_only(true);
+    cookie.set_path("/");
+    cookie.set_secure(true);
+    cookie.set_same_site(SameSite::Strict);
+    cookie.make_removal();
+
+    cookie
 }
 
 fn create_auth_cookie<'a>(token: &'a str) -> Cookie<'a> {

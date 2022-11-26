@@ -1,45 +1,53 @@
-<!DOCTYPE html>
-<title>Permissions</title>
+{% extends "page.html" %}
+
+{% block title %}Permissions - {% endblock %}
+
+{% block header %}
 <style>
-table, th, td { border: 1px inset black; text-align: center; }
 .ok { background-color: #a9ffa9; }
 .bad { background-color: #ffa9a9; }
 #success { display: none; }
 #success:target { display: block !important; }
 </style>
-<meta charset="utf-8" />
+{% endblock %}
 
-<h1>Admin dashboard</h1>
-<nav>
-<i>Permissions</i>
-<a href="audit">Audit</a>
-<a href="invite">Invites</a>
-</nav>
-
+{% block content %}
 <h2>Permissions</h2>
 <p>Manage permissions for all Hivecom users.
 
-<table>
-<tr>
-<th>
-{% for role in all_roles %}
-<th>{{ role }}
+<table class="permission-matrix">
+<tr> <!-- role service headers -->
+<th class="hatch">
+{% for s in service_roles %}
+<th colspan="{{ s.roles.len() }}">{{ s.service_name }}
 {% endfor %}
 
-{% for (user, roles) in user_roles %}
+<tr> <!-- role headers -->
+<th class="hatch">
+{% for s in service_roles %}
+    {% for role in s.roles %}
+<th>{{ role }}
+    {% endfor %}
+{% endfor %}
+
+{% for u in user_roles %}
 <tr>
-<th>{{ user }}
-    {% for (role, role_name) in roles.iter().zip(all_roles) %}
-        {% if role %}
-<td><input id="{{ user }}+{{ role_name }}" class="switch" checked type="checkbox" autocomplete=off />
-        {% else %}
-<td><input id="{{ user }}+{{ role_name }}" class="switch" type="checkbox" autocomplete=off />
-        {% endif %}
+<th>{{ u.user }}
+    {% for s in service_roles %}
+        {% for r in s.roles %}
+            {% if u.roles.contains(r.as_str()) %}
+<td><input id="{{ u.user }}+{{ s.service_name}}+{{ r }}" class="switch" checked type="checkbox" autocomplete=off />
+            {% else %}
+<td><input id="{{ u.user }}+{{ s.service_name}}+{{ r }}" class="switch" type="checkbox" autocomplete=off />
+            {% endif %}
+        {% endfor %}
     {% endfor %}
 {% endfor %}
 </table>
 
 <h2>Changes</h2>
+<p>List of changes to the permissions. These are the changes that will be applied when pressing the <i>Apply</i> button.
+<p>A <span class="bad">red</span> background means the role will be removed for the user, while a <span class="ok">green</span> indicates the role will be added.
 <form action="/api/permissions" method="post">
 <p id="changes">None
 <p><button id="apply" disabled>Apply</button>
@@ -90,9 +98,7 @@ function gatherChanges() {
         let checked = checkboxes[i].checked;
         if (checked != original_values[id]) {
             let split = id.split("+");
-            let name = split[0];
-            let role = split[1];
-            changes.push({ name: split[0], role: split[1], value: checked });
+            changes.push({ name: split[0], service: split[1], role: split[2], value: checked });
         }
     }
 
@@ -110,6 +116,7 @@ function updateSubmitForm() {
         container.innerText = "None";
     } else {
         let table = document.createElement("table");
+        table.classList.add("permission-matrix");
         let row = document.createElement("tr");
         let c = document.createElement("th");
         c.innerText = "Name"
@@ -126,13 +133,13 @@ function updateSubmitForm() {
             c.innerText = changes[i].name; 
             row.appendChild(c);
             c = document.createElement("td");
-            c.innerText = changes[i].role; 
+            c.innerText = changes[i].service + "/" + changes[i].role; 
             c.classList.toggle(changes[i].value ? "ok" : "bad", true);
             row.appendChild(c);
 
             let input = document.createElement("input");
             input.type = "hidden";
-            input.name = changes[i].name + "+" + changes[i].role;
+            input.name = changes[i].name + "+" + changes[i].service + "+" + changes[i].role;
             input.value = changes[i].value;
 
             row.appendChild(input);
@@ -145,3 +152,4 @@ function updateSubmitForm() {
     }
 }
 </script>
+{% endblock %}

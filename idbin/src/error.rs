@@ -22,6 +22,9 @@ pub enum Error {
     #[error("Invalid username or password")]
     InvalidLogin,
 
+    #[error("Passwords do not match")]
+    PasswordMismatch,
+
     #[error("Invalid password")]
     InvalidPassword,
 
@@ -65,6 +68,7 @@ impl IntoResponse for Error {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
             Error::InvalidUsername
+            | Error::PasswordMismatch
             | Error::JsonRejection(_)
             | Error::MissingRedirect
             | Error::MissingToken

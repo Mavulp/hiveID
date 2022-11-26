@@ -1,26 +1,22 @@
 <!DOCTYPE html>
-<title>Login</title>
+<title>Login - HiveID</title>
+<link rel="stylesheet" href="/static/style.css" />
+<link rel="icon" href="/static/favicon.png">
+<meta charset="utf-8" />
 <style>
-html, body { height: 100%; padding: 0; margin: 0; }
-.a { display: table; width: 100%; height: 100%; }
-.b { display: table-cell; vertical-align: middle; }
-.cool { border: 1px solid #333; border-radius: 4px; box-shadow: 3px 3px 0px 0px #ccc; }
-.login { margin: auto; padding: 2em 1em; max-width: 20em; text-align: center; font-family: mono; }
-.error { margin-top: 1em; background-color: #ffa9a9; padding: 0.5em; width: 14em; margin: 1em auto 0 auto; }
+.error { margin-top: 1em; background-color: #ffa9a9; padding: 0.5em; width: 14em; }
 #retry { display: none; }
 #retry:target { display: block !important; }
 </style>
-<meta charset="utf-8" />
+<main>
 
-<div class="a">
-<div class="b">
-<form class="cool login" action="/api/login" method="post" >
+<form action="/api/login" method="post" >
 
-<img src="broken" /> <!-- logo -->
+<img src="/static/favicon.png" />
 <p style="color:#333;">
-Authenticate with <strong>{{ service_display }}</strong> using your Hivecom ID
+Authenticate with <span class="service-text" title="Some description">{{ service_display }}</span> using your Hivecom ID
 
-<table style="margin:auto;">
+<table class="login-table">
 
 <tr>
 <td><label for="username">Username:</label>
@@ -43,10 +39,6 @@ Authenticate with <strong>{{ service_display }}</strong> using your Hivecom ID
 <tr>
 <td colspan="2"><button style="width:100%;">Login</button>
 
-<!--
-    these are used for redirecting back to the service that requested
-    authentication
--->
 <input type="hidden" name="service" value="{{ service }}">
 <input type="hidden" name="redirect" value="{{ redirect_to }}">
 
@@ -55,3 +47,24 @@ Authenticate with <strong>{{ service_display }}</strong> using your Hivecom ID
 <p id="retry" class="cool error">Invalid username or password
 
 </form>
+
+</main>
+
+
+<!--
+
+<!DOCTYPE html>
+<title>Login</title>
+<style>
+html, body { height: 100%; padding: 0; margin: 0; }
+.a { display: table; width: 100%; height: 100%; }
+.b { display: table-cell; vertical-align: middle; }
+.cool { border: 1px solid #333; border-radius: 4px; box-shadow: 3px 3px 0px 0px #ccc; }
+.login { margin: auto; padding: 2em 1em; max-width: 20em; text-align: center; font-family: mono; }
+</style>
+<meta charset="utf-8" />
+
+<div class="a">
+<div class="b">
+
+-->
