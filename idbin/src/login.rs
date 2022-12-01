@@ -41,7 +41,6 @@ pub(crate) struct LoginParams {
 struct Service {
     name: String,
     nice_name: String,
-    id: String,
     secret: String,
     callback_url: String,
 }
@@ -49,15 +48,14 @@ struct Service {
 async fn get_service(db: &Connection, service_name: String) -> Option<Service> {
     db.call(move |conn| {
         conn.query_row(
-            "SELECT name, nice_name, id, secret, callback_url FROM services WHERE name = ?1",
+            "SELECT name, nice_name, secret, callback_url FROM services WHERE name = ?1",
             params![&service_name],
             |row| {
                 Ok(Service {
                     name: row.get(0).unwrap(),
                     nice_name: row.get(1).unwrap(),
-                    id: row.get(2).unwrap(),
-                    secret: row.get(3).unwrap(),
-                    callback_url: row.get(4).unwrap(),
+                    secret: row.get(2).unwrap(),
+                    callback_url: row.get(3).unwrap(),
                 })
             },
         )

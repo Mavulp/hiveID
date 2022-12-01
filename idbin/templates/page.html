@@ -15,6 +15,7 @@
 {% if admin %}
 <li>Admin/
 <ul>
+<li>{% call navlink("/admin/services", "Services", current_page) %}
 <li>{% call navlink("/admin/invite", "Invites", current_page) %}
 <li>{% call navlink("/admin/audit", "Audit log", current_page) %}
 <li>{% call navlink("/admin/permissions", "Permissions", current_page) %}

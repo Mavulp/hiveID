@@ -1,4 +1,5 @@
 use std::{
+    marker::PhantomData,
     sync::Arc,
     time::{Duration, SystemTime},
 };
@@ -16,20 +17,46 @@ use axum::{
     Extension, Json,
 };
 use jwt::VerifyWithKey;
-use log::{debug};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
 
 use crate::{Cookies, SecretKey, Variables};
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum Operation {
-    Read,
-    Write,
+pub struct AuthorizeCookie<R: Rule>(pub Payload, pub PhantomData<R>);
+
+pub trait Rule {
+    fn verify(groups: &[String]) -> bool;
 }
 
-pub struct AuthorizeCookie<const GROUP: Option<&'static str> = None>(pub Payload);
+pub struct Has<const G: &'static str>;
+pub struct Either<A, B>(PhantomData<(A, B)>);
+pub struct Both<A, B>(PhantomData<(A, B)>);
+
+impl<const G: &'static str> Rule for Has<G> {
+    fn verify(groups: &[String]) -> bool {
+        groups.iter().any(|g| g == G)
+    }
+}
+
+impl<A: Rule, B: Rule> Rule for Either<A, B> {
+    fn verify(groups: &[String]) -> bool {
+        A::verify(groups) || B::verify(groups)
+    }
+}
+
+impl<A: Rule, B: Rule> Rule for Both<A, B> {
+    fn verify(groups: &[String]) -> bool {
+        A::verify(groups) && B::verify(groups)
+    }
+}
+
+impl Rule for () {
+    fn verify(_groups: &[String]) -> bool {
+        true
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Payload {
@@ -59,7 +86,7 @@ pub enum AuthorizationRejection {
 }
 
 #[async_trait]
-impl<B, const GROUP: Option<&'static str>> FromRequest<B> for AuthorizeCookie<GROUP>
+impl<B, R: Rule> FromRequest<B> for AuthorizeCookie<R>
 where
     B: Send,
 {
@@ -88,23 +115,25 @@ where
         };
 
         let Extension(secret) = Extension::<SecretKey>::from_request(req).await?;
-        let payload: Payload = token.value().verify_with_key(&*secret.0).context("Failed to parse JWT")?;
+        let payload: Payload = token
+            .value()
+            .verify_with_key(&*secret.0)
+            .context("Failed to parse JWT")?;
 
         let issued_at = Duration::from_secs(payload.issued_at);
         let now = SystemTime::UNIX_EPOCH.elapsed().unwrap();
 
+        // TODO: call /refresh on IDP
         // tokens are only valid for 60 days
         if now > issued_at + Duration::from_secs(3600 * 24 * 60) {
             return Err(AuthorizationRejection::ExpiredToken);
         }
 
-        if let Some(group) = GROUP {
-            if !payload.groups.iter().any(|s| s == group) {
-                return Err(AuthorizationRejection::Forbidden(group));
-            }
+        if !R::verify(&payload.groups) {
+            return Err(AuthorizationRejection::Forbidden("todo"));
         }
 
-        Ok(AuthorizeCookie(payload))
+        Ok(AuthorizeCookie(payload, PhantomData))
     }
 }
 

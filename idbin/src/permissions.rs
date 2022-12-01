@@ -10,7 +10,7 @@ use axum::{
 };
 
 use futures::{StreamExt};
-use idlib::{AuthorizeCookie, IdpClient, SecretKey};
+use idlib::{AuthorizeCookie, IdpClient, SecretKey, Has};
 
 
 use log::{debug, warn};
@@ -139,7 +139,7 @@ async fn get_user_roles(db: &Connection) -> anyhow::Result<Vec<UserRoles>> {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(_): AuthorizeCookie<{ Some("admin") }>,
+    AuthorizeCookie(..): AuthorizeCookie<Has<"admin">>,
     Query(params): Query<PermissionParams>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
@@ -159,7 +159,7 @@ pub(crate) async fn page(
 }
 
 pub(crate) async fn post_permissions(
-    AuthorizeCookie(payload): AuthorizeCookie<{ Some("admin") }>,
+    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
     Form(changes): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
     Extension(client): Extension<IdpClient>,

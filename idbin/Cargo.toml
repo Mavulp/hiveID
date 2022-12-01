@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.57"
-axum = { version = "0.5.7", features = ["http1", "query", "headers", "ws"] }
+axum = { version = "0.5.7", features = ["http1", "query", "headers", "ws", "multipart"] }
 bytes = "1.1.0"
 dotenv = "0.15.0"
 futures = "0.3.21"
@@ -38,3 +38,4 @@ serde_rusqlite = "0.30.1"
 blob-uuid = "0.5.0"
 humantime = "2.1.0"
 relativetime = "0.1.4"
+rand = "0.8.5"

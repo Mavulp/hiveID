@@ -3,7 +3,7 @@ use std::{fmt::Display, time::Duration};
 use anyhow::Context;
 use askama::Template;
 use axum::{body::BoxBody, http::Response, Extension};
-use idlib::AuthorizeCookie;
+use idlib::{AuthorizeCookie, Has};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -30,6 +30,11 @@ pub enum AuditAction {
     ConsumeInvite(String),
     RegisterUser(String),
     PermissionChange(Vec<UserPermissionChange>),
+    CreatedService(String),
+    ServiceChange(String),
+    ServiceSecretGenerate(String),
+    NewServiceRole(String, String),
+    DeletedServiceRole(String, String),
 }
 
 impl Display for AuditAction {
@@ -69,6 +74,21 @@ impl Display for AuditAction {
                     write!(f, "</ul>")?;
                 }
             }
+            AuditAction::CreatedService(service) => {
+                writeln!(f, "Created new service {service:?}")?;
+            }
+            AuditAction::ServiceChange(service) => {
+                writeln!(f, "Updated service settings for {service:?}")?;
+            }
+            AuditAction::ServiceSecretGenerate(service) => {
+                writeln!(f, "Regenerated secret for {service:?}")?;
+            }
+            AuditAction::NewServiceRole(service, role) => {
+                writeln!(f, "Added role {role:?} for {service:?}")?;
+            }
+            AuditAction::DeletedServiceRole(service, role) => {
+                writeln!(f, "Deleted role {role:?} for {service:?}")?;
+            }
         }
 
         Ok(())
@@ -106,7 +126,7 @@ mod filters {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(_): AuthorizeCookie<{ Some("admin") }>,
+    AuthorizeCookie(..): AuthorizeCookie<Has<"admin">>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
     let audit_logs = db.call(get_audit_logs).await?;

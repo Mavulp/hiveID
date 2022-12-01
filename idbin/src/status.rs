@@ -1,4 +1,4 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use askama::Template;
 use axum::{
@@ -6,9 +6,8 @@ use axum::{
     http::{Response, StatusCode},
     Extension,
 };
-use futures::{StreamExt};
 use reqwest::Client;
-use tokio::{sync::RwLock};
+use tokio::sync::RwLock;
 
 use crate::Connection;
 use crate::{error::Error, into_response};

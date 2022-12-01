@@ -18,18 +18,24 @@ body {
 }
 
 main {
+    padding-bottom: 4em;
+}
+.role-input {
+    width: 8em;
 }
 
-.login-table, .permission-matrix, .invite-list, .audit-logs, .account-details, .services, th, td {
+.service-table, .login-table, .permission-matrix, .invite-list, .audit-logs, .account-details, .services, th, td {
     border: 1px solid #555;
     border-collapse: collapse;
+}
+.help-text {
+    text-decoration: underline dotted;
+    cursor: help;
 }
 .service-text {
     text-decoration: underline dotted;
     font-weight: bold;
     cursor: help;
-}
-.services {
 }
 th, td {
     padding: 0.75em;

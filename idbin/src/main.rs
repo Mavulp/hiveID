@@ -22,6 +22,7 @@ mod error;
 mod home;
 mod invite;
 mod login;
+mod services;
 // mod oauth;
 mod permissions;
 mod register;
@@ -54,6 +55,12 @@ pub fn api_route(
         .route("/account", get(account::page))
         .route("/account", post(account::post_page))
         .route("/status", get(status::page))
+        .route("/admin/services", get(services::page))
+        .route("/admin/services", post(services::post_update_service))
+        .route("/admin/services/create", post(services::post_create_service))
+        .route("/admin/services/secret/generate", post(services::post_generate_secret))
+        .route("/admin/services/roles", post(services::post_create_new_role))
+        .route("/admin/services/roles/delete", post(services::post_delete_role))
         .route("/admin/permissions", get(permissions::page))
         .route("/admin/audit", get(audit::page))
         .route("/admin/invite", get(invite::page))

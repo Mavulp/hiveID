@@ -14,8 +14,10 @@ CREATE TABLE users (
 CREATE TABLE services (
     name TEXT PRIMARY KEY NOT NULL COLLATE NOCASE,
     nice_name TEXT NOT NULL,
-    id TEXT NOT NULL,
     description TEXT NOT NULL,
+
+    icon TEXT,
+
     secret TEXT NOT NULL,
     callback_url TEXT NOT NULL
 ) STRICT;
@@ -64,7 +66,7 @@ CREATE TABLE user_invite_default_roles (
 ) STRICT;
 
 -- bootstrap ourselves as a service
-INSERT INTO services (name, nice_name, description, id, secret, callback_url) VALUES ('idbin', 'HiveID', 'Manage Hivecom accounts', '', 'aHVudGVyMg==', '/auth/authorize');
+INSERT INTO services (name, nice_name, description, secret, callback_url) VALUES ('idbin', 'HiveID', 'Manage Hivecom accounts', 'aHVudGVyMg==', '/auth/authorize');
 INSERT INTO roles (name, service) VALUES ('admin', 'idbin');
 
 INSERT INTO user_invites (key, created_by, created_at, services) VALUES ('admin', 'admin', 0, 'admin');

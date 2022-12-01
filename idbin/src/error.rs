@@ -10,15 +10,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Not Found")]
-    NotFound,
-
-    #[error("Unathorized")]
-    Unathorized,
-
-    #[error("Invalid username")]
-    InvalidUsername,
-
     #[error("Invalid username or password")]
     InvalidLogin,
 
@@ -27,15 +18,6 @@ pub enum Error {
 
     #[error("Invalid password")]
     InvalidPassword,
-
-    #[error("Missing redirect parameter")]
-    MissingRedirect,
-
-    #[error("Missing token parameter")]
-    MissingToken,
-
-    #[error("Missing auth cookie")]
-    MissingAuthCookie,
 
     #[error("Failed to refresh auth token: {0}")]
     BadTokenRefresh(String),
@@ -53,10 +35,9 @@ pub enum Error {
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status = match &self {
-            Error::InvalidLogin | Error::InvalidPassword | Error::Unathorized => {
+            Error::InvalidLogin | Error::InvalidPassword => {
                 StatusCode::UNAUTHORIZED
             }
-            Error::NotFound => StatusCode::NOT_FOUND,
             Error::BadTokenRefresh(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Error::InternalError(e) => {
                 let err = e
@@ -67,13 +48,9 @@ impl IntoResponse for Error {
 
                 StatusCode::INTERNAL_SERVER_ERROR
             }
-            Error::InvalidUsername
-            | Error::PasswordMismatch
+            Error::PasswordMismatch
             | Error::JsonRejection(_)
-            | Error::MissingRedirect
-            | Error::MissingToken
-            | Error::InvalidService(_)
-            | Error::MissingAuthCookie => StatusCode::BAD_REQUEST,
+            | Error::InvalidService(_) => StatusCode::BAD_REQUEST,
         };
 
         let message = if let Error::JsonRejection(rej) = self {

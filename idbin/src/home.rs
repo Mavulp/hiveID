@@ -46,7 +46,7 @@ struct HomePageTemplate<'a> {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(payload): AuthorizeCookie,
+    AuthorizeCookie(payload, ..): AuthorizeCookie<()>,
     Extension(db): Extension<Connection>,
     Extension(statuses): Extension<Statuses>,
 ) -> Result<Response<BoxBody>, Error> {

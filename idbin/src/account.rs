@@ -38,7 +38,7 @@ pub(crate) struct AccountParams {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(payload): AuthorizeCookie,
+    AuthorizeCookie(payload, ..): AuthorizeCookie<()>,
     Query(params): Query<AccountParams>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
@@ -46,7 +46,7 @@ pub(crate) async fn page(
 }
 
 pub(crate) async fn post_page(
-    AuthorizeCookie(payload): AuthorizeCookie,
+    AuthorizeCookie(payload, ..): AuthorizeCookie<()>,
     Form(update): Form<AccountUpdate>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
@@ -63,18 +63,6 @@ pub(crate) async fn post_page(
 
     Ok(response)
 }
-
-/*fn get_permissions(enforcer: &Enforcer, username: &str) -> anyhow::Result<AccountPermissions> {
-    let permissions = enforcer.enforce((username, "permissions", "read"))?;
-    let audit = enforcer.enforce((username, "audit", "read"))?;
-    let invite = enforcer.enforce((username, "invite", "read"))?;
-
-    Ok(AccountPermissions {
-        permissions,
-        audit,
-        invite,
-    })
-}*/
 
 async fn get_email(name: String, db: Connection) -> anyhow::Result<String> {
     let email = db
@@ -117,7 +105,7 @@ pub(crate) struct AccountUpdate {
 }
 
 pub(crate) async fn post_account(
-    AuthorizeCookie(payload): AuthorizeCookie,
+    AuthorizeCookie(payload, ..): AuthorizeCookie<()>,
     Form(update): Form<AccountUpdate>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {

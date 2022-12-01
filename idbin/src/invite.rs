@@ -9,7 +9,7 @@ use axum::{
     Extension, Form,
 };
 
-use idlib::AuthorizeCookie;
+use idlib::{AuthorizeCookie, Has};
 
 use serde::Deserialize;
 
@@ -55,24 +55,8 @@ pub(crate) struct InviteParams {
     error: Option<String>,
 }
 
-async fn get_users(db: &Connection) -> anyhow::Result<Vec<String>> {
-    db.call(|conn| {
-        let mut stmt = conn
-            .prepare("SELECT username FROM users")
-            .context("Failed to prepare statement")?;
-        let users = stmt
-            .query_map(params![], |row| Ok(row.get::<_, String>(0).unwrap()))
-            .context("Failed to query users")?
-            .collect::<Result<Vec<String>, rusqlite::Error>>()
-            .context("Failed to collect users")?;
-
-        Ok(users)
-    })
-    .await
-}
-
 pub(crate) async fn page(
-    AuthorizeCookie(_): AuthorizeCookie<{ Some("admin") }>,
+    AuthorizeCookie(..): AuthorizeCookie<Has<"admin">>,
     Query(params): Query<InviteParams>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
@@ -148,7 +132,7 @@ pub(crate) struct DeleteForm {
 }
 
 pub(crate) async fn delete_page(
-    AuthorizeCookie(payload): AuthorizeCookie<{ Some("admin") }>,
+    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
     Form(DeleteForm { key }): Form<DeleteForm>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
@@ -192,7 +176,7 @@ pub(crate) async fn delete_invite_impl(
 }
 
 pub(crate) async fn create_page(
-    AuthorizeCookie(payload): AuthorizeCookie<{ Some("admin") }>,
+    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
     Form(services): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
