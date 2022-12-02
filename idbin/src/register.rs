@@ -134,10 +134,7 @@ pub(crate) async fn post_page(
     Ok(response)
 }
 
-pub(crate) async fn post_register_impl(
-    register: Register,
-    db: Connection,
-) -> Result<(), Error> {
+pub(crate) async fn post_register_impl(register: Register, db: Connection) -> Result<(), Error> {
     if register.password != register.password2 {
         return Err(Error::PasswordMismatch);
     }

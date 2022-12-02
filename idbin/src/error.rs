@@ -4,7 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use log::error;
+use log::{error, warn};
 use serde_json::json;
 use thiserror::Error;
 
@@ -15,12 +15,6 @@ pub enum Error {
 
     #[error("Passwords do not match")]
     PasswordMismatch,
-
-    #[error("Invalid password")]
-    InvalidPassword,
-
-    #[error("Failed to refresh auth token: {0}")]
-    BadTokenRefresh(String),
 
     #[error("Unknown service requested: {0}")]
     InvalidService(String),
@@ -34,11 +28,10 @@ pub enum Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
+        warn!("{self:?}");
+
         let status = match &self {
-            Error::InvalidLogin | Error::InvalidPassword => {
-                StatusCode::UNAUTHORIZED
-            }
-            Error::BadTokenRefresh(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::InvalidLogin => StatusCode::UNAUTHORIZED,
             Error::InternalError(e) => {
                 let err = e
                     .chain()
@@ -48,9 +41,9 @@ impl IntoResponse for Error {
 
                 StatusCode::INTERNAL_SERVER_ERROR
             }
-            Error::PasswordMismatch
-            | Error::JsonRejection(_)
-            | Error::InvalidService(_) => StatusCode::BAD_REQUEST,
+            Error::PasswordMismatch | Error::JsonRejection(_) | Error::InvalidService(_) => {
+                StatusCode::BAD_REQUEST
+            }
         };
 
         let message = if let Error::JsonRejection(rej) = self {

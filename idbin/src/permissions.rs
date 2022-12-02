@@ -3,18 +3,17 @@ use std::collections::{HashMap, HashSet};
 use anyhow::Context;
 use askama::Template;
 use axum::{
-    body::{boxed, BoxBody, Empty},
+    body::{boxed, Empty},
     extract::Query,
     http::{Response, StatusCode},
+    response::IntoResponse,
     Extension, Form,
 };
 
-use futures::{StreamExt};
-use idlib::{AuthorizeCookie, IdpClient, SecretKey, Has};
-
+use idlib::{AuthorizeCookie, Has, IdpClient, SecretKey};
 
 use log::{debug, warn};
-use serde::{Deserialize};
+use serde::Deserialize;
 
 use rusqlite::params;
 use tokio_rusqlite::Connection;
@@ -38,22 +37,6 @@ struct PermissionPageTemplate {
 #[derive(Deserialize)]
 pub(crate) struct PermissionParams {
     error: Option<String>,
-}
-
-async fn get_users(db: &Connection) -> anyhow::Result<Vec<String>> {
-    db.call(|conn| {
-        let mut stmt = conn
-            .prepare("SELECT username FROM users")
-            .context("Failed to prepare statement")?;
-        let users = stmt
-            .query_map(params![], |row| Ok(row.get::<_, String>(0).unwrap()))
-            .context("Failed to query users")?
-            .collect::<Result<Vec<String>, rusqlite::Error>>()
-            .context("Failed to collect users")?;
-
-        Ok(users)
-    })
-    .await
 }
 
 struct ServiceRoles {
@@ -139,51 +122,58 @@ async fn get_user_roles(db: &Connection) -> anyhow::Result<Vec<UserRoles>> {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(_payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Query(params): Query<PermissionParams>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    let _users = get_users(&db).await?;
-    let service_roles = get_all_roles(&db).await?;
-    let user_roles = get_user_roles(&db).await?;
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let service_roles = get_all_roles(&db).await?;
+            let user_roles = get_user_roles(&db).await?;
 
-    let template = PermissionPageTemplate {
-        current_page: "/admin/permissions",
-        admin: true,
-        service_roles,
-        user_roles,
-        error: params.error,
-    };
+            let template = PermissionPageTemplate {
+                current_page: "/admin/permissions",
+                admin: true,
+                service_roles,
+                user_roles,
+                error: params.error,
+            };
 
-    Ok(into_response(&template, "html"))
+            Ok::<_, Error>(into_response(&template, "html"))
+        })
+        .await
 }
 
 pub(crate) async fn post_permissions(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Form(changes): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
     Extension(client): Extension<IdpClient>,
     Extension(_key): Extension<SecretKey>,
-) -> Result<Response<BoxBody>, Error> {
-    let redirect = match post_permissions_impl(changes, client, db, payload.name).await {
-        Ok(()) => "/admin/permissions#success".into(),
-        Err(e) => {
-            warn!("Failed to set permissions: {e:?}");
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let redirect = match post_permissions_impl(changes, client, db, payload.name).await {
+                Ok(()) => "/admin/permissions#success".into(),
+                Err(e) => {
+                    warn!("Failed to set permissions: {e:?}");
 
-            format!(
-                "/admin/permissions?error={}",
-                urlencoding::encode(&e.to_string())
-            )
-        }
-    };
+                    format!(
+                        "/admin/permissions?error={}",
+                        urlencoding::encode(&e.to_string())
+                    )
+                }
+            };
 
-    let response = Response::builder()
-        .header("Location", &redirect)
-        .status(StatusCode::SEE_OTHER)
-        .body(boxed(Empty::new()))
-        .unwrap();
+            let response = Response::builder()
+                .header("Location", &redirect)
+                .status(StatusCode::SEE_OTHER)
+                .body(boxed(Empty::new()))
+                .unwrap();
 
-    Ok(response)
+            Ok::<_, Error>(response)
+        })
+        .await
 }
 
 pub(crate) async fn post_permissions_impl(

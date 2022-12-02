@@ -4,8 +4,9 @@ use askama::Template;
 use axum::{
     body::{self, boxed, BoxBody, Empty, Full},
     http::{Response, StatusCode},
-    routing::{get, post, get_service},
-    Extension, Router, response::IntoResponse,
+    response::IntoResponse,
+    routing::{get, get_service, post},
+    Extension, Router,
 };
 use error::Error;
 use idlib::{IdpClient, SecretKey, Variables};
@@ -25,6 +26,7 @@ mod login;
 mod services;
 // mod oauth;
 mod permissions;
+mod refresh;
 mod register;
 mod status;
 
@@ -39,9 +41,9 @@ pub fn api_route(
     statuses: Statuses,
 ) -> Router {
     let variables = Variables {
-        idp_fetch_permission_address: None,
-        idp_refresh_address: String::from("/refresh"),
+        idp_refresh_address: String::from("https://id.hivecom.net/refresh"),
         idp_login_address: String::from("/login"),
+        token_duration_seconds: 60 * 60,
         service_name: String::from("idbin"),
     };
 
@@ -50,17 +52,29 @@ pub fn api_route(
     Router::new()
         .route("/", get(home::page))
         .route("/login", get(login::page))
+        .route("/refresh", post(refresh::post_refresh_token))
         .route("/register", get(register::page))
         .route("/register", post(register::post_page))
         .route("/account", get(account::page))
         .route("/account", post(account::post_page))
-        .route("/status", get(status::page))
         .route("/admin/services", get(services::page))
         .route("/admin/services", post(services::post_update_service))
-        .route("/admin/services/create", post(services::post_create_service))
-        .route("/admin/services/secret/generate", post(services::post_generate_secret))
-        .route("/admin/services/roles", post(services::post_create_new_role))
-        .route("/admin/services/roles/delete", post(services::post_delete_role))
+        .route(
+            "/admin/services/create",
+            post(services::post_create_service),
+        )
+        .route(
+            "/admin/services/secret/generate",
+            post(services::post_generate_secret),
+        )
+        .route(
+            "/admin/services/roles",
+            post(services::post_create_new_role),
+        )
+        .route(
+            "/admin/services/roles/delete",
+            post(services::post_delete_role),
+        )
         .route("/admin/permissions", get(permissions::page))
         .route("/admin/audit", get(audit::page))
         .route("/admin/invite", get(invite::page))
@@ -136,12 +150,7 @@ async fn run() {
 
     let statuses = Statuses(Arc::new(RwLock::new(Vec::new())));
 
-    let router = api_route(
-        conn.clone(),
-        secret_key,
-        serve_dir,
-        statuses.clone(),
-    );
+    let router = api_route(conn.clone(), secret_key, serve_dir, statuses.clone());
 
     tokio::spawn(async move {
         status_poll_loop(conn, statuses).await;

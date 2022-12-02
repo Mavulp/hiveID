@@ -1,8 +1,8 @@
 use anyhow::Context;
 use askama::Template;
 use axum::{
-    body::{boxed, BoxBody, Empty},
-    extract::{Multipart, Query},
+    body::{boxed, Empty},
+    extract::Multipart,
     http::{Response, StatusCode},
     response::IntoResponse,
     Extension, Form,
@@ -11,7 +11,7 @@ use axum::{
 use futures::Future;
 use idlib::{AuthorizeCookie, Has, Payload};
 
-use log::{debug, warn};
+use log::warn;
 use serde::Deserialize;
 
 use rusqlite::params;
@@ -45,7 +45,6 @@ fn redirect_result(result: Result<(), Error>, id: Option<&str>) -> impl IntoResp
         .body(boxed(Empty::new()))
         .unwrap()
 }
-
 
 #[derive(Template)]
 #[template(path = "services.html")]
@@ -86,7 +85,7 @@ fn get_roles_for_service(conn: &rusqlite::Connection, name: &str) -> Vec<String>
     roles
 }
 
-async fn get_all_services(db: &Connection) -> anyhow::Result<Vec<Service>> {
+async fn get_all_services(db: &Connection) -> Result<Vec<Service>, Error> {
     db.call(|conn| {
         let mut stmt = conn
             .prepare(
@@ -108,19 +107,23 @@ async fn get_all_services(db: &Connection) -> anyhow::Result<Vec<Service>> {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(_payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    let services = get_all_services(&db).await?;
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let services = get_all_services(&db).await?;
 
-    let template = ServicesPageTemplate {
-        current_page: "/admin/services",
-        admin: true,
-        services,
-        error: None,
-    };
+            let template = ServicesPageTemplate {
+                current_page: "/admin/services",
+                admin: true,
+                services,
+                error: None,
+            };
 
-    Ok(into_response(&template, "html"))
+            Ok::<_, Error>(into_response(&template, "html"))
+        })
+        .await
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -164,14 +167,18 @@ async fn parse_service_update(mut multipart: Multipart) -> anyhow::Result<Servic
 }
 
 pub(crate) async fn post_generate_secret(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Form(service): Form<NewService>,
     Extension(db): Extension<Connection>,
 ) -> impl IntoResponse {
-    redirect_result(
-        generate_secret(db, service.name.clone(), payload).await,
-        Some(&service.name),
-    )
+    maybe_token
+        .wrap_future(async move {
+            redirect_result(
+                generate_secret(db, service.name.clone(), payload).await,
+                Some(&service.name),
+            )
+        })
+        .await
 }
 
 async fn generate_secret(db: Connection, service: String, payload: Payload) -> Result<(), Error> {
@@ -213,7 +220,7 @@ where
 }
 
 pub(crate) async fn post_update_service(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     multipart: Multipart,
     Extension(db): Extension<Connection>,
 ) -> impl IntoResponse {
@@ -221,7 +228,9 @@ pub(crate) async fn post_update_service(
     let id = result.as_ref().map(|update| update.name.clone()).ok();
     let result = result.map(|update| update_service(db, update, payload));
 
-    redirect_result(transpose_flatten(result).await, id.as_deref())
+    maybe_token
+        .wrap_future(async move { redirect_result(transpose_flatten(result).await, id.as_deref()) })
+        .await
 }
 
 pub(crate) async fn update_service(
@@ -248,7 +257,7 @@ pub(crate) async fn update_service(
         )
         .context("Failed to update service")?;
 
-        if let Some(ref icon) = icon_image {
+        if let Some(ref _icon) = icon_image {
             conn.execute(
                 "UPDATE services \
             SET icon = ?1 \
@@ -279,14 +288,18 @@ pub(crate) struct NewService {
 }
 
 pub(crate) async fn post_create_service(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Form(service): Form<NewService>,
     Extension(db): Extension<Connection>,
 ) -> impl IntoResponse {
-    redirect_result(
-        create_new_service(db, service.clone(), payload).await,
-        Some(&service.name),
-    )
+    maybe_token
+        .wrap_future(async move {
+            redirect_result(
+                create_new_service(db, service.clone(), payload).await,
+                Some(&service.name),
+            )
+        })
+        .await
 }
 
 async fn create_new_service(
@@ -324,14 +337,18 @@ pub(crate) struct Role {
 }
 
 pub(crate) async fn post_create_new_role(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Form(role): Form<Role>,
     Extension(db): Extension<Connection>,
 ) -> impl IntoResponse {
-    redirect_result(
-        create_new_role(db, role.clone(), payload).await,
-        Some(&role.service_name),
-    )
+    maybe_token
+        .wrap_future(async move {
+            redirect_result(
+                create_new_role(db, role.clone(), payload).await,
+                Some(&role.service_name),
+            )
+        })
+        .await
 }
 
 async fn create_new_role(db: Connection, role: Role, payload: Payload) -> Result<(), Error> {
@@ -358,14 +375,18 @@ async fn create_new_role(db: Connection, role: Role, payload: Payload) -> Result
 }
 
 pub(crate) async fn post_delete_role(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Form(role): Form<Role>,
     Extension(db): Extension<Connection>,
 ) -> impl IntoResponse {
-    redirect_result(
-        delete_role(db, role.clone(), payload).await,
-        Some(&role.service_name),
-    )
+    maybe_token
+        .wrap_future(async move {
+            redirect_result(
+                delete_role(db, role.clone(), payload).await,
+                Some(&role.service_name),
+            )
+        })
+        .await
 }
 
 async fn delete_role(db: Connection, role: Role, payload: Payload) -> Result<(), Error> {

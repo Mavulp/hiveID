@@ -4,7 +4,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use axum::{
     body::{boxed, Empty},
@@ -12,19 +12,67 @@ use axum::{
         rejection::{ExtensionRejection, TypedHeaderRejection},
         FromRequest, RequestParts,
     },
-    http::StatusCode,
+    http::{header::SET_COOKIE, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Extension, Json,
 };
+use futures::Future;
 use jwt::VerifyWithKey;
-use log::debug;
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
 
-use crate::{Cookies, SecretKey, Variables};
+use crate::{
+    create_auth_cookie, Cookies, IdpClient, RefreshTokenRequest, RefreshTokenResponse, SecretKey,
+    Variables,
+};
 
-pub struct AuthorizeCookie<R: Rule>(pub Payload, pub PhantomData<R>);
+#[must_use]
+pub struct AuthorizeCookie<R: Rule>(pub Payload, pub MaybeRefreshedToken, pub PhantomData<R>);
+
+#[must_use]
+pub struct MaybeRefreshedToken(Option<String>);
+
+impl MaybeRefreshedToken {
+    pub async fn wrap_future<R: IntoResponse, F: Future<Output = R>>(self, fut: F) -> Response {
+        let mut response = fut.await.into_response();
+
+        if let Some(token) = self.0 {
+            let cookie = create_auth_cookie(&token);
+
+            match HeaderValue::from_str(&cookie.encoded().to_string()) {
+                Ok(value) => {
+                    response.headers_mut().insert(SET_COOKIE, value);
+                }
+                Err(e) => {
+                    warn!("Failed to parse cookie value: {e:?}");
+                }
+            }
+        }
+
+        response
+    }
+
+    pub fn wrap<R: IntoResponse, F: Fn() -> R>(self, func: F) -> impl IntoResponse {
+        let mut response = func().into_response();
+
+        if let Some(token) = self.0 {
+            let cookie = create_auth_cookie(&token);
+
+            match HeaderValue::from_str(cookie.value()) {
+                Ok(value) => {
+                    response.headers_mut().insert(SET_COOKIE, value);
+                }
+                Err(e) => {
+                    warn!("Failed to parse cookie value: {e:?}");
+                }
+            }
+        }
+
+        response
+    }
+}
 
 pub trait Rule {
     fn verify(groups: &[String]) -> bool;
@@ -95,14 +143,13 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let Cookies(jar) = Cookies::from_request(req).await.unwrap();
 
+        let Extension(variables) = Extension::<Arc<Variables>>::from_request(req).await?;
+
         let token = match jar.get("__auth") {
             Some(token) => token,
             None => {
                 debug!("Failed to find auth cookie. Redirecting to IDP");
 
-                let Extension(variables) = Extension::<Arc<Variables>>::from_request(req).await?;
-
-                // TODO: use client ID instead of service name
                 let redirect = format!(
                     "{}?service={}&redirect_to={}",
                     variables.idp_login_address,
@@ -122,18 +169,55 @@ where
 
         let issued_at = Duration::from_secs(payload.issued_at);
         let now = SystemTime::UNIX_EPOCH.elapsed().unwrap();
+        let mut new_token = None;
 
-        // TODO: call /refresh on IDP
         // tokens are only valid for 60 days
-        if now > issued_at + Duration::from_secs(3600 * 24 * 60) {
-            return Err(AuthorizationRejection::ExpiredToken);
+        if now > issued_at + Duration::from_secs(variables.token_duration_seconds as u64) {
+            debug!("Token expired, trying to refresh");
+            let Extension(idp_client) = Extension::<IdpClient>::from_request(req).await?;
+
+            match try_refresh_token(&variables, idp_client, token.value().to_string()).await {
+                Ok(token) => {
+                    debug!("Refreshed token");
+
+                    new_token = Some(token);
+                }
+                Err(e) => {
+                    warn!("Failed to refresh token: {e:?}");
+
+                    return Err(AuthorizationRejection::ExpiredToken);
+                }
+            }
         }
 
         if !R::verify(&payload.groups) {
-            return Err(AuthorizationRejection::Forbidden("todo"));
+            debug!("Invalid permissions in JWT");
+            let new_payload: Option<Payload> = new_token
+                .as_ref()
+                .map(|token| {
+                    token
+                        .verify_with_key(&*secret.0)
+                        .context("Failed to parse JWT")
+                })
+                .transpose()?;
+            if let Some(new_payload) = new_payload {
+                if !R::verify(&new_payload.groups) {
+                    debug!("Invalid permissions in refreshed JWT");
+
+                    return Err(AuthorizationRejection::Forbidden("todo"));
+                } else {
+                    debug!("Found correct permissions in refreshed JWT!");
+                }
+            } else {
+                return Err(AuthorizationRejection::Forbidden("todo"));
+            }
         }
 
-        Ok(AuthorizeCookie(payload, PhantomData))
+        Ok(AuthorizeCookie(
+            payload,
+            MaybeRefreshedToken(new_token),
+            PhantomData,
+        ))
     }
 }
 
@@ -170,4 +254,36 @@ impl IntoResponse for AuthorizationRejection {
 
         (status, body).into_response()
     }
+}
+
+async fn try_refresh_token(
+    vars: &Variables,
+    IdpClient(client): IdpClient,
+    token: String,
+) -> anyhow::Result<String> {
+    let request = RefreshTokenRequest {
+        service: vars.service_name.to_string(),
+        token: token.to_string(),
+    };
+
+    let response = client
+        .post(&vars.idp_refresh_address)
+        .json(&request)
+        .send()
+        .await
+        .context("Failed to refresh auth token")?;
+
+    let status = response.status();
+    if status != StatusCode::OK {
+        return Err(anyhow!(
+            "Unexpected status code {status:?} from refreshing token"
+        ));
+    }
+
+    let response: RefreshTokenResponse = response
+        .json()
+        .await
+        .context("Failed to deserialize token response")?;
+
+    Ok(response.new_token)
 }

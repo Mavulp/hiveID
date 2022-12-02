@@ -15,7 +15,7 @@ use axum::{
 use cookie::{Cookie, CookieJar, SameSite};
 use futures::Future;
 use jwt::VerifyWithKey;
-
+use serde::{Deserialize, Serialize};
 
 use crate::{Error, IdpClient, Payload, SecretKey, Variables};
 
@@ -88,8 +88,7 @@ async fn revoke_token() -> Result<impl IntoResponse, Error> {
     Ok(StatusCode::OK)
 }
 
-async fn logout(
-) -> Result<impl IntoResponse, Error> {
+async fn logout() -> Result<impl IntoResponse, Error> {
     let cookie = create_logout_cookie();
 
     let response = Response::builder()
@@ -102,39 +101,15 @@ async fn logout(
     Ok(response)
 }
 
-// TODO: move this into authorize.rs?
-/// Refreshes the token from the IdP by sending in a valid token.
-async fn post_auth(
-    Cookies(jar): Cookies,
-    Extension(IdpClient(client)): Extension<IdpClient>,
-    Extension(vars): Extension<Arc<Variables>>,
-) -> Result<Response<BoxBody>, Error> {
-    let token = jar.get("__auth").ok_or(Error::MissingAuthCookie)?;
-    let token = token.value().to_string();
+#[derive(Serialize, Deserialize)]
+pub struct RefreshTokenRequest {
+    pub service: String,
+    pub token: String,
+}
 
-    let response = client
-        .post(&vars.idp_refresh_address)
-        .body(token)
-        .send()
-        .await
-        .context("Failed to refresh auth token")?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if status != StatusCode::OK {
-        return Err(Error::BadTokenRefresh(body));
-    }
-
-    let cookie = create_auth_cookie(&body);
-
-    let response = Response::builder()
-        .header(SET_COOKIE, cookie.encoded().to_string())
-        .status(StatusCode::OK)
-        .body(boxed(Empty::new()))
-        .unwrap();
-
-    Ok(response)
+#[derive(Serialize, Deserialize)]
+pub struct RefreshTokenResponse {
+    pub new_token: String,
 }
 
 #[derive(Clone)]
@@ -173,7 +148,7 @@ fn create_logout_cookie() -> Cookie<'static> {
     cookie
 }
 
-fn create_auth_cookie<'a>(token: &'a str) -> Cookie<'a> {
+pub fn create_auth_cookie<'a>(token: &'a str) -> Cookie<'a> {
     let mut cookie = Cookie::new("__auth", token);
     cookie.set_http_only(true);
     cookie.set_path("/");

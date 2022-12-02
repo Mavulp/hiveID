@@ -1,11 +1,12 @@
-use std::{time::Duration};
+use std::time::Duration;
 
 use anyhow::Context;
 use askama::Template;
 use axum::{
-    body::{boxed, BoxBody, Empty},
+    body::{boxed, Empty},
     extract::Query,
     http::{Response, StatusCode},
+    response::IntoResponse,
     Extension, Form,
 };
 
@@ -20,7 +21,7 @@ use tokio_rusqlite::Connection;
 use crate::{
     audit::{self, AuditAction},
     error::Error,
-    into_response
+    into_response,
 };
 
 struct Link {
@@ -42,8 +43,8 @@ struct InvitePageTemplate {
 }
 
 mod filters {
-    use std::time::Duration;
     use relativetime::NegativeRelativeTime;
+    use std::time::Duration;
 
     pub fn duration(duration: &Duration) -> ::askama::Result<String> {
         Ok(duration.to_relative_in_past())
@@ -56,20 +57,24 @@ pub(crate) struct InviteParams {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(_payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Query(params): Query<InviteParams>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    let links = get_links(db).await?;
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let links = get_links(db).await?;
 
-    let template = InvitePageTemplate {
-        current_page: "/admin/invite",
-        admin: true,
-        links,
-        error: params.error,
-    };
+            let template = InvitePageTemplate {
+                current_page: "/admin/invite",
+                admin: true,
+                links,
+                error: params.error,
+            };
 
-    Ok(into_response(&template, "html"))
+            Ok::<_, Error>(into_response(&template, "html"))
+        })
+        .await
 }
 
 #[derive(Deserialize)]
@@ -108,11 +113,16 @@ async fn get_links(db: Connection) -> anyhow::Result<Vec<Link>> {
                 let link = Link {
                     key: info.key,
                     created_by: info.created_by,
-                    created_ago: (now - OffsetDateTime::from_unix_timestamp(info.created_at).unwrap()).try_into().unwrap(),
+                    created_ago: (now
+                        - OffsetDateTime::from_unix_timestamp(info.created_at).unwrap())
+                    .try_into()
+                    .unwrap(),
                     used_by: info.used_by,
-                    used_ago: info
-                        .used_at
-                        .map(|at| (now - OffsetDateTime::from_unix_timestamp(at).unwrap()).try_into().unwrap()),
+                    used_ago: info.used_at.map(|at| {
+                        (now - OffsetDateTime::from_unix_timestamp(at).unwrap())
+                            .try_into()
+                            .unwrap()
+                    }),
                 };
 
                 Ok(link)
@@ -132,25 +142,29 @@ pub(crate) struct DeleteForm {
 }
 
 pub(crate) async fn delete_page(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Form(DeleteForm { key }): Form<DeleteForm>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    let redirect = match delete_invite_impl(key, db, payload.name).await {
-        Ok(()) => "/admin/invite#removed".into(),
-        Err(e) => format!(
-            "/admin/invite?error={}",
-            urlencoding::encode(&e.to_string())
-        ),
-    };
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let redirect = match delete_invite_impl(key, db, payload.name).await {
+                Ok(()) => "/admin/invite#removed".into(),
+                Err(e) => format!(
+                    "/admin/invite?error={}",
+                    urlencoding::encode(&e.to_string())
+                ),
+            };
 
-    let response = Response::builder()
-        .header("Location", &redirect)
-        .status(StatusCode::SEE_OTHER)
-        .body(boxed(Empty::new()))
-        .unwrap();
+            let response = Response::builder()
+                .header("Location", &redirect)
+                .status(StatusCode::SEE_OTHER)
+                .body(boxed(Empty::new()))
+                .unwrap();
 
-    Ok(response)
+            Ok::<_, Error>(response)
+        })
+        .await
 }
 
 pub(crate) async fn delete_invite_impl(
@@ -176,31 +190,35 @@ pub(crate) async fn delete_invite_impl(
 }
 
 pub(crate) async fn create_page(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Form(services): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    let services = services
-        .into_iter()
-        .filter_map(|(s, v)| (v == "true").then(|| s))
-        .collect::<Vec<_>>();
-    let services = services.join(",");
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let services = services
+                .into_iter()
+                .filter_map(|(s, v)| (v == "true").then(|| s))
+                .collect::<Vec<_>>();
+            let services = services.join(",");
 
-    let redirect = match create_invite_impl(db, payload.name, services).await {
-        Ok(()) => "/admin/invite#added".into(),
-        Err(e) => format!(
-            "/admin/invite?error={}",
-            urlencoding::encode(&e.to_string())
-        ),
-    };
+            let redirect = match create_invite_impl(db, payload.name, services).await {
+                Ok(()) => "/admin/invite#added".into(),
+                Err(e) => format!(
+                    "/admin/invite?error={}",
+                    urlencoding::encode(&e.to_string())
+                ),
+            };
 
-    let response = Response::builder()
-        .header("Location", &redirect)
-        .status(StatusCode::SEE_OTHER)
-        .body(boxed(Empty::new()))
-        .unwrap();
+            let response = Response::builder()
+                .header("Location", &redirect)
+                .status(StatusCode::SEE_OTHER)
+                .body(boxed(Empty::new()))
+                .unwrap();
 
-    Ok(response)
+            Ok::<_, Error>(response)
+        })
+        .await
 }
 
 pub(crate) async fn create_invite_impl(

@@ -1,5 +1,5 @@
 use askama::Template;
-use axum::{body::BoxBody, http::Response, Extension};
+use axum::{response::IntoResponse, Extension};
 use idlib::AuthorizeCookie;
 use reqwest::StatusCode;
 use rusqlite::params;
@@ -25,8 +25,16 @@ async fn get_all_services(db: &Connection, Statuses(statuses): Statuses) -> Vec<
                 let name: String = row.get(0).unwrap();
                 let nice_name: String = row.get(1).unwrap();
                 let desc: String = row.get(2).unwrap();
-                let status = statuses.iter().find(|s| s.name == name).and_then(|s| s.code);
-                Ok(Service { name, nice_name, desc, status })
+                let status = statuses
+                    .iter()
+                    .find(|s| s.name == name)
+                    .and_then(|s| s.code);
+                Ok(Service {
+                    name,
+                    nice_name,
+                    desc,
+                    status,
+                })
             })
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
@@ -46,17 +54,21 @@ struct HomePageTemplate<'a> {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<()>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<()>,
     Extension(db): Extension<Connection>,
     Extension(statuses): Extension<Statuses>,
-) -> Result<Response<BoxBody>, Error> {
-    let services = get_all_services(&db, statuses).await;
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let services = get_all_services(&db, statuses).await;
 
-    let template = HomePageTemplate {
-        current_page: "/",
-        admin: payload.groups.iter().any(|g| g == "admin"),
-        services: &services,
-    };
+            let template = HomePageTemplate {
+                current_page: "/",
+                admin: payload.groups.iter().any(|g| g == "admin"),
+                services: &services,
+            };
 
-    Ok(into_response(&template, "html"))
+            Ok::<_, Error>(into_response(&template, "html"))
+        })
+        .await
 }

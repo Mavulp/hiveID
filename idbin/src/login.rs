@@ -10,14 +10,13 @@ use axum::{
     Extension, Form,
 };
 use hmac::{Hmac, Mac};
-use idlib::{Payload};
+use idlib::Payload;
 use jwt::SignWithKey;
 use log::debug;
 use rusqlite::{params, OptionalExtension};
 use serde::Deserialize;
 use sha2::Sha256;
 use tokio_rusqlite::Connection;
-
 
 use crate::{error::Error, into_response};
 
@@ -38,14 +37,14 @@ pub(crate) struct LoginParams {
     username: Option<String>,
 }
 
-struct Service {
-    name: String,
-    nice_name: String,
-    secret: String,
-    callback_url: String,
+pub struct Service {
+    pub name: String,
+    pub nice_name: String,
+    pub secret: String,
+    pub callback_url: String,
 }
 
-async fn get_service(db: &Connection, service_name: String) -> Option<Service> {
+pub async fn get_service(db: &Connection, service_name: String) -> Option<Service> {
     db.call(move |conn| {
         conn.query_row(
             "SELECT name, nice_name, secret, callback_url FROM services WHERE name = ?1",
@@ -140,10 +139,6 @@ pub(crate) async fn post_login_impl(
     login: Login,
     db: Connection,
 ) -> Result<Response<BoxBody>, Error> {
-    let service = get_service(&db, login.service.clone())
-        .await
-        .ok_or_else(|| Error::InvalidService(login.service.clone()))?;
-
     let username = login.username.clone();
 
     let result: Option<(String, String)> = db
@@ -180,7 +175,36 @@ pub(crate) async fn post_login_impl(
         return Err(Error::InvalidLogin);
     }
 
-    let groups = get_groups_for_user(&db, username.clone(), service.name).await;
+    let service = get_service(&db, login.service.clone())
+        .await
+        .ok_or_else(|| Error::InvalidService(login.service.clone()))?;
+
+    let token = generate_jwt_for_user_and_service(db, username, &service)
+        .await
+        .context("Failed to generate JWT")?;
+
+    let url = format!(
+        "{}?redirect_uri={}&token={}",
+        service.callback_url,
+        urlencoding::encode(&login.redirect),
+        urlencoding::encode(&token)
+    );
+
+    let response = Response::builder()
+        .header("Location", url.as_str())
+        .status(StatusCode::SEE_OTHER)
+        .body(boxed(Empty::new()))
+        .unwrap();
+
+    Ok(response)
+}
+
+pub async fn generate_jwt_for_user_and_service(
+    db: Connection,
+    username: String,
+    service: &Service,
+) -> anyhow::Result<String> {
+    let groups = get_groups_for_user(&db, username.clone(), service.name.clone()).await;
 
     let now = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
     let payload = Payload {
@@ -197,18 +221,5 @@ pub(crate) async fn post_login_impl(
         .sign_with_key(&secret_key)
         .context("Failed to sign payload")?;
 
-    let url = format!(
-        "{}?redirect_uri={}&token={}",
-        service.callback_url,
-        urlencoding::encode(&login.redirect),
-        urlencoding::encode(&token)
-    );
-
-    let response = Response::builder()
-        .header("Location", url.as_str())
-        .status(StatusCode::SEE_OTHER)
-        .body(boxed(Empty::new()))
-        .unwrap();
-
-    Ok(response)
+    Ok(token)
 }

@@ -8,6 +8,7 @@ use axum::{
     body::{boxed, BoxBody, Empty},
     extract::Query,
     http::{Response, StatusCode},
+    response::IntoResponse,
     Extension, Form,
 };
 
@@ -38,30 +39,36 @@ pub(crate) struct AccountParams {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<()>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<()>,
     Query(params): Query<AccountParams>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    render_page(payload, params.error, db).await
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(render_page(payload, params.error, db))
+        .await
 }
 
 pub(crate) async fn post_page(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<()>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<()>,
     Form(update): Form<AccountUpdate>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    let redirect = match post_account_impl(update.clone(), db, payload.name).await {
-        Ok(()) => "/account#success".into(),
-        Err(e) => format!("/account?error={}", urlencoding::encode(&e.to_string())),
-    };
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let redirect = match post_account_impl(update.clone(), db, payload.name).await {
+                Ok(()) => "/account#success".into(),
+                Err(e) => format!("/account?error={}", urlencoding::encode(&e.to_string())),
+            };
 
-    let response = Response::builder()
-        .header("Location", &redirect)
-        .status(StatusCode::SEE_OTHER)
-        .body(boxed(Empty::new()))
-        .unwrap();
+            let response = Response::builder()
+                .header("Location", &redirect)
+                .status(StatusCode::SEE_OTHER)
+                .body(boxed(Empty::new()))
+                .unwrap();
 
-    Ok(response)
+            Ok::<_, Error>(response)
+        })
+        .await
 }
 
 async fn get_email(name: String, db: Connection) -> anyhow::Result<String> {
@@ -89,7 +96,7 @@ async fn render_page(
         current_page: "/account",
         username: payload.name,
         email,
-        admin: payload.groups.iter().any(|s|s=="admin"),
+        admin: payload.groups.iter().any(|s| s == "admin"),
         error,
     };
 
@@ -105,18 +112,22 @@ pub(crate) struct AccountUpdate {
 }
 
 pub(crate) async fn post_account(
-    AuthorizeCookie(payload, ..): AuthorizeCookie<()>,
+    AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<()>,
     Form(update): Form<AccountUpdate>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    post_account_impl(update.clone(), db.clone(), payload.name).await?;
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            post_account_impl(update.clone(), db.clone(), payload.name).await?;
 
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .body(boxed(Empty::new()))
-        .unwrap();
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(boxed(Empty::new()))
+                .unwrap();
 
-    Ok(response)
+            Ok::<_, Error>(response)
+        })
+        .await
 }
 
 pub(crate) async fn post_account_impl(

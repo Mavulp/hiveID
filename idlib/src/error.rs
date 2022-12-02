@@ -34,8 +34,8 @@ pub enum Error {
     #[error("Missing auth cookie")]
     MissingAuthCookie,
 
-    #[error("Failed to refresh auth token: {0}")]
-    BadTokenRefresh(String),
+    #[error("Failed to refresh auth token")]
+    BadTokenRefresh,
 
     #[error("Unknown service requested: {0}")]
     InvalidService(String),
@@ -54,7 +54,7 @@ impl IntoResponse for Error {
                 StatusCode::UNAUTHORIZED
             }
             Error::NotFound => StatusCode::NOT_FOUND,
-            Error::BadTokenRefresh(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::BadTokenRefresh => StatusCode::INTERNAL_SERVER_ERROR,
             Error::InternalError(e) => {
                 let err = e
                     .chain()

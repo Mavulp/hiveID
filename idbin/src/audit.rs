@@ -2,7 +2,7 @@ use std::{fmt::Display, time::Duration};
 
 use anyhow::Context;
 use askama::Template;
-use axum::{body::BoxBody, http::Response, Extension};
+use axum::{response::IntoResponse, Extension};
 use idlib::{AuthorizeCookie, Has};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -117,8 +117,8 @@ struct AuditLogPageTemplate<'a> {
 }
 
 mod filters {
-    use std::time::Duration;
     use relativetime::NegativeRelativeTime;
+    use std::time::Duration;
 
     pub fn duration(duration: &Duration) -> ::askama::Result<String> {
         Ok(duration.to_relative_in_past())
@@ -126,17 +126,21 @@ mod filters {
 }
 
 pub(crate) async fn page(
-    AuthorizeCookie(..): AuthorizeCookie<Has<"admin">>,
+    AuthorizeCookie(_payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
     Extension(db): Extension<Connection>,
-) -> Result<Response<BoxBody>, Error> {
-    let audit_logs = db.call(get_audit_logs).await?;
-    let template = AuditLogPageTemplate {
-        current_page: "/admin/audit",
-        admin: true,
-        actions: &audit_logs,
-    };
+) -> impl IntoResponse {
+    maybe_token
+        .wrap_future(async move {
+            let audit_logs = db.call(get_audit_logs).await?;
+            let template = AuditLogPageTemplate {
+                current_page: "/admin/audit",
+                admin: true,
+                actions: &audit_logs,
+            };
 
-    Ok(into_response(&template, "html"))
+            Ok::<_, Error>(into_response(&template, "html"))
+        })
+        .await
 }
 
 fn get_audit_logs(conn: &mut rusqlite::Connection) -> anyhow::Result<Vec<Action>> {
@@ -153,7 +157,9 @@ fn get_audit_logs(conn: &mut rusqlite::Connection) -> anyhow::Result<Vec<Action>
         audit_logs.push(Action {
             action: serde_json::de::from_str(row.get_ref(0)?.as_str()?)?,
             performed_by: row.get::<_, String>(1)?,
-            time_ago: (now - OffsetDateTime::from_unix_timestamp(row.get(2)?)?).try_into().unwrap(),
+            time_ago: (now - OffsetDateTime::from_unix_timestamp(row.get(2)?)?)
+                .try_into()
+                .unwrap(),
         });
     }
 
