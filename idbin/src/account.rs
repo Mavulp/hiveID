@@ -50,8 +50,8 @@ pub(crate) async fn page(
 
 pub(crate) async fn post_page(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<()>,
-    Form(update): Form<AccountUpdate>,
     Extension(db): Extension<Connection>,
+    Form(update): Form<AccountUpdate>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {
@@ -113,8 +113,8 @@ pub(crate) struct AccountUpdate {
 
 pub(crate) async fn post_account(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<()>,
-    Form(update): Form<AccountUpdate>,
     Extension(db): Extension<Connection>,
+    Form(update): Form<AccountUpdate>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {

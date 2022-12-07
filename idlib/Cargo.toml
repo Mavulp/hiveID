@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.57"
-axum = { version = "0.5.7", features = ["http1", "query", "headers", "ws"] }
+axum = { version = "0.6", features = ["http1", "query", "headers", "ws", "macros"] }
 bytes = "1.1.0"
 futures = "0.3.21"
 log = "0.4.17"
@@ -21,5 +21,5 @@ sha2 = "0.10.2"
 base64 = "0.13.0"
 url = "2.2.2"
 cookie = { version = "0.16.0", features = ["secure", "percent-encode"] }
-reqwest = "0.11.11"
+reqwest = { version = "0.11.11", features = ["json"] }
 urlencoding = "2.1.0"

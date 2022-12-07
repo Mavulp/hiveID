@@ -48,7 +48,7 @@ impl Variables {
         Variables {
             idp_login_address: env::var("IDP_LOGIN_ADDR").expect("IDP_LOGIN_ADDR not set"),
             idp_refresh_address: env::var("IDP_REFRESH_ADDR").expect("IDP_REFRESH_ADDR not set"),
-            token_duration_seconds: env::var("TOKEN_DURATION_SECONDS").expect("IDP_REFRESH_ADDR not set").parse().expect("Expected integer"),
+            token_duration_seconds: env::var("TOKEN_DURATION_SECONDS").expect("TOKEN_DURATION_SECONDS not set").parse().expect("Expected integer"),
             service_name: env::var("SERVICE_NAME").expect("SERVICE_NAME not set"),
         }
     }

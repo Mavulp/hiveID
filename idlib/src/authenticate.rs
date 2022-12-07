@@ -3,10 +3,10 @@ use std::{collections::HashMap, pin::Pin, sync::Arc};
 use anyhow::Context;
 use axum::{
     body::{boxed, BoxBody, Empty},
-    extract::{FromRequest, Query, RequestParts},
+    extract::{FromRequest, Query, FromRequestParts},
     http::{
         header::{COOKIE, LOCATION, SET_COOKIE},
-        Response, StatusCode,
+        Response, StatusCode, request::Parts,
     },
     response::IntoResponse,
     routing::{get, post},
@@ -116,16 +116,16 @@ pub struct RefreshTokenResponse {
 pub struct Cookies(pub CookieJar);
 
 #[async_trait::async_trait]
-impl<B> FromRequest<B> for Cookies
+impl<B> FromRequestParts<B> for Cookies
 where
-    B: Send,
+    B: Send + Sync,
 {
     type Rejection = ();
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(req: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
         let mut jar = CookieJar::new();
 
-        if let Some(Ok(cookie)) = req.headers().get(COOKIE).map(|c| c.to_str()) {
+        if let Some(Ok(cookie)) = req.headers.get(COOKIE).map(|c| c.to_str()) {
             for cookie in cookie.split(';') {
                 if let Ok(cookie) = Cookie::parse_encoded(cookie) {
                     jar.add(cookie.into_owned());

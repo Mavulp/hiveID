@@ -105,8 +105,8 @@ pub(crate) struct Register {
 }
 
 pub(crate) async fn post_page(
-    Form(register): Form<Register>,
     Extension(db): Extension<Connection>,
+    Form(register): Form<Register>,
 ) -> Result<Response<BoxBody>, Error> {
     let redirect = match post_register_impl(register.clone(), db).await {
         Ok(()) => "/".into(),

@@ -112,8 +112,8 @@ pub(crate) struct Login {
 }
 
 pub(crate) async fn post_login(
-    Form(login): Form<Login>,
     Extension(db): Extension<Connection>,
+    Form(login): Form<Login>,
 ) -> Result<Response<BoxBody>, Error> {
     match post_login_impl(login.clone(), db).await {
         Ok(response) => Ok(response),

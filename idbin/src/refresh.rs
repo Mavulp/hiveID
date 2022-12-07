@@ -14,9 +14,10 @@ use crate::{
     Connection,
 };
 
+#[axum::debug_handler]
 pub(crate) async fn post_refresh_token(
-    Json(request): Json<RefreshTokenRequest>,
     Extension(db): Extension<Connection>,
+    Json(request): Json<RefreshTokenRequest>,
 ) -> Result<Response, Error> {
     let token = refresh_token(db, request).await?;
 

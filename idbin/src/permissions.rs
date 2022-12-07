@@ -146,10 +146,9 @@ pub(crate) async fn page(
 
 pub(crate) async fn post_permissions(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
-    Form(changes): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
     Extension(client): Extension<IdpClient>,
-    Extension(_key): Extension<SecretKey>,
+    Form(changes): Form<Vec<(String, String)>>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {

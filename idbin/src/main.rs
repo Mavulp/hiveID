@@ -85,7 +85,7 @@ pub fn api_route(
         .route("/api/permissions", post(permissions::post_permissions))
         .route("/api/account", post(account::post_account))
         .nest("/auth", idlib::api_route(client, None))
-        .nest(
+        .nest_service(
             "/static/",
             get_service(ServeDir::new(serve_dir)).handle_error(handle_error),
         )

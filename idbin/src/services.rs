@@ -168,8 +168,8 @@ async fn parse_service_update(mut multipart: Multipart) -> anyhow::Result<Servic
 
 pub(crate) async fn post_generate_secret(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
-    Form(service): Form<NewService>,
     Extension(db): Extension<Connection>,
+    Form(service): Form<NewService>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {
@@ -221,8 +221,8 @@ where
 
 pub(crate) async fn post_update_service(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
-    multipart: Multipart,
     Extension(db): Extension<Connection>,
+    multipart: Multipart,
 ) -> impl IntoResponse {
     let result = parse_service_update(multipart).await;
     let id = result.as_ref().map(|update| update.name.clone()).ok();
@@ -289,8 +289,8 @@ pub(crate) struct NewService {
 
 pub(crate) async fn post_create_service(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
-    Form(service): Form<NewService>,
     Extension(db): Extension<Connection>,
+    Form(service): Form<NewService>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {
@@ -338,8 +338,8 @@ pub(crate) struct Role {
 
 pub(crate) async fn post_create_new_role(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
-    Form(role): Form<Role>,
     Extension(db): Extension<Connection>,
+    Form(role): Form<Role>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {
@@ -376,8 +376,8 @@ async fn create_new_role(db: Connection, role: Role, payload: Payload) -> Result
 
 pub(crate) async fn post_delete_role(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
-    Form(role): Form<Role>,
     Extension(db): Extension<Connection>,
+    Form(role): Form<Role>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {

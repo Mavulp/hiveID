@@ -143,8 +143,8 @@ pub(crate) struct DeleteForm {
 
 pub(crate) async fn delete_page(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
-    Form(DeleteForm { key }): Form<DeleteForm>,
     Extension(db): Extension<Connection>,
+    Form(DeleteForm { key }): Form<DeleteForm>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {
@@ -191,8 +191,8 @@ pub(crate) async fn delete_invite_impl(
 
 pub(crate) async fn create_page(
     AuthorizeCookie(payload, maybe_token, ..): AuthorizeCookie<Has<"admin">>,
-    Form(services): Form<Vec<(String, String)>>,
     Extension(db): Extension<Connection>,
+    Form(services): Form<Vec<(String, String)>>,
 ) -> impl IntoResponse {
     maybe_token
         .wrap_future(async move {

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.57"
-axum = { version = "0.5.7", features = ["http1", "query", "headers", "ws", "multipart"] }
+axum = { version = "0.6", features = ["http1", "query", "headers", "ws", "multipart", "macros"] }
 bytes = "1.1.0"
 dotenv = "0.15.0"
 futures = "0.3.21"

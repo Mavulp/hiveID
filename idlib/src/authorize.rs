@@ -10,9 +10,9 @@ use axum::{
     body::{boxed, Empty},
     extract::{
         rejection::{ExtensionRejection, TypedHeaderRejection},
-        FromRequest, RequestParts,
+        FromRequest, FromRequestParts,
     },
-    http::{header::SET_COOKIE, HeaderValue, StatusCode},
+    http::{header::SET_COOKIE, HeaderValue, StatusCode, request::Parts},
     response::{IntoResponse, Response},
     Extension, Json,
 };
@@ -134,16 +134,16 @@ pub enum AuthorizationRejection {
 }
 
 #[async_trait]
-impl<B, R: Rule> FromRequest<B> for AuthorizeCookie<R>
+impl<B, R: Rule> FromRequestParts<B> for AuthorizeCookie<R>
 where
-    B: Send,
+    B: Send + Sync,
 {
     type Rejection = AuthorizationRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Cookies(jar) = Cookies::from_request(req).await.unwrap();
+    async fn from_request_parts(req: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
+        let Cookies(jar) = Cookies::from_request_parts(req, state).await.unwrap();
 
-        let Extension(variables) = Extension::<Arc<Variables>>::from_request(req).await?;
+        let Extension(variables) = Extension::<Arc<Variables>>::from_request_parts(req, state).await?;
 
         let token = match jar.get("__auth") {
             Some(token) => token,
@@ -154,14 +154,14 @@ where
                     "{}?service={}&redirect_to={}",
                     variables.idp_login_address,
                     variables.service_name,
-                    urlencoding::encode(req.uri().path())
+                    urlencoding::encode(req.uri.path())
                 );
 
                 return Err(AuthorizationRejection::MissingAuth(redirect));
             }
         };
 
-        let Extension(secret) = Extension::<SecretKey>::from_request(req).await?;
+        let Extension(secret) = Extension::<SecretKey>::from_request_parts(req, state).await?;
         let payload: Payload = token
             .value()
             .verify_with_key(&*secret.0)
@@ -174,7 +174,7 @@ where
         // tokens are only valid for 60 days
         if now > issued_at + Duration::from_secs(variables.token_duration_seconds as u64) {
             debug!("Token expired, trying to refresh");
-            let Extension(idp_client) = Extension::<IdpClient>::from_request(req).await?;
+            let Extension(idp_client) = Extension::<IdpClient>::from_request_parts(req, state).await?;
 
             match try_refresh_token(&variables, idp_client, token.value().to_string()).await {
                 Ok(token) => {
