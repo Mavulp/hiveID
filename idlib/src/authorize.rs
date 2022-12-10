@@ -60,7 +60,7 @@ impl MaybeRefreshedToken {
         if let Some(token) = self.0 {
             let cookie = create_auth_cookie(&token);
 
-            match HeaderValue::from_str(cookie.value()) {
+            match HeaderValue::from_str(&cookie.encoded().to_string()) {
                 Ok(value) => {
                     response.headers_mut().insert(SET_COOKIE, value);
                 }
@@ -81,6 +81,7 @@ pub trait Rule {
 pub struct Has<const G: &'static str>;
 pub struct Either<A, B>(PhantomData<(A, B)>);
 pub struct Both<A, B>(PhantomData<(A, B)>);
+pub struct NoGroups;
 
 impl<const G: &'static str> Rule for Has<G> {
     fn verify(groups: &[String]) -> bool {
@@ -106,7 +107,13 @@ impl Rule for () {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+impl Rule for NoGroups {
+    fn verify(_groups: &[String]) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Payload {
     pub name: String,
     pub issued_at: u64,

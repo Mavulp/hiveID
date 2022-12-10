@@ -34,9 +34,7 @@ pub fn api_route(client: IdpClient, cb: Option<AuthCallback>) -> Router {
     let mut router = Router::new()
         .route("/authorize", get(authorize_with_cookie))
         .route("/revoke", post(revoke_token))
-        .route("/logout", post(logout))
-        // .route("/", put(put_auth))
-        .layer(Extension(client));
+        .route("/logout", post(logout));
 
     if let Some(cb) = cb {
         router = router.layer(Extension(cb));
