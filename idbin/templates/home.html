@@ -14,7 +14,7 @@
 
   <div class="container-large">
     <ul class="service-list">
-      {% for service in services %}
+      {% for (service, status) in services %}
       <li>
         <a href="/redirect?service={{ service.name }}" class="service-item">
           <div class="service-logo">
@@ -29,7 +29,7 @@
             <p>{{ service.description }}</p>
           </div>
 
-          {% if let Some(code) = service.status %}
+          {% if let Some(code) = status %}
             <div class="service-status">
               <span>{{ code }}</span>
             </div>
