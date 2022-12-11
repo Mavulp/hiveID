@@ -32,7 +32,6 @@ form {
 input:focus,
 input:active {
   outline: 1px solid var(--color-accent) !important;
-  /* outline-color: var(--color-accent) !important; */
 }
 
 ::placeholder {
@@ -61,9 +60,7 @@ button[type=submit] {
   border: none;
   background-color: var(--color-accent-light);
   color: var(--color-accent);
-  /* border: 1px solid var(--color-accent); */
   cursor: pointer;
-  /* background-color: transparent; */
 }
 
 button[type=submit]:hover {

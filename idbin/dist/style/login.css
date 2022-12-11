@@ -1,7 +1,4 @@
 .route-login {
-  /* display: flex;
-  align-items: center;
-  justify-content: center; */
   border-radius: 10px;
   position: absolute;
   left: 50%;
@@ -42,5 +39,5 @@
 }
 
 .route-register .register-header p:last-of-type {
-  color: var(--color-text-light);
+  color: var(--color-text-dimmed);
 }
