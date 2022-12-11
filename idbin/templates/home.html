@@ -6,24 +6,35 @@
 {% endblock %}
 
 {% block content %}
-<h2>HiveID</h2>
-<p>HiveID is a site for managing accounts across many services in the Hivecom community.
-<table class="services">
-<tr>
-<th>Service
-<th>Description
-<th>Status
+<div class="route-home">
+  <div class="container-small">
+    <h1>HIVE ID</h1>
+    <p>A site for managing accounts across services from the Hivecom community.</p>
+  </div>
 
-{% for service in services %}
-<tr>
-<td><a href="/redirect?service={{ service.name }}">{{ service.nice_name }}</a>
-<td>{{ service.desc }}
-<td>
-{% if let Some(code) = service.status %}
-{{ code }}
-{% else %}
-N/A
-{% endif %}
-{% endfor %}
-</table>
+  <div class="container-large">
+    <ul class="service-list">
+      {% for service in services %}
+      <li>
+        <a href="/redirect?service={{ service.name }}" class="service-item">
+          <div class="service-logo">
+            <img src="{{ service.logo }}" alt="">
+          </div>
+          <div class="service-content">
+            <h2>{{ service.nice_name }}</h2>
+            <p>{{ service.desc }}</p>
+          </div>
+
+          {% if let Some(code) = service.status %}
+            <div class="service-status">
+              <span>{{ code }}</span>
+            </div>
+          {% endif %}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
 {% endblock %}
+
