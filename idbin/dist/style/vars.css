@@ -1,0 +1,17 @@
+:root {
+  --color-text: #151414;
+  --color-text-light: #757575;
+  --color-placeholder: #C0C0C0;
+  --color-bg: #FFFCF8;
+  --color-bg-dark: #F7F0E8;
+  --color-border: #DFCEB9;
+  --color-accent: #D76144;
+  --color-accent-light: #FAEBE7;
+  --color-secondary:#3B6061;
+
+  --font-fallback: BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-sans;
+
+
+  --top-padding: 16vh;
+}

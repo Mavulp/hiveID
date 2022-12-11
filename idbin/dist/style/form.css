@@ -1,0 +1,72 @@
+/* form {
+
+} */
+
+form {
+  /* display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end; */
+}
+
+.input-item {
+  display: block;
+  width: 100%;
+  position: relative;
+  margin-bottom: 25px;
+}
+
+.input-item input {
+  font-family: "Rubik", var(--font-fallback);
+  font-weight: 400;
+  display: block;
+  border-radius: 5px;
+  height: 40px;
+  overflow: hidden;
+  line-height: 40px;
+  padding: 0 15px;
+  font-size: 1rem;
+  width: 100%;
+  border: 1px solid var(--color-border);
+}
+
+input:focus,
+input:active {
+  outline: 1px solid var(--color-accent) !important;
+  /* outline-color: var(--color-accent) !important; */
+}
+
+::placeholder {
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+}
+
+.input-item label {
+  padding: 2px 10px;
+  position: absolute;
+  left: 15px;
+  top: -25%;
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  background-color: var(--color-bg);
+}
+
+button[type=submit] {
+  transition: 0.15s all ease-in-out;
+  font-weight: 400;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: none;
+  background-color: var(--color-accent-light);
+  color: var(--color-accent);
+  /* border: 1px solid var(--color-accent); */
+  cursor: pointer;
+  /* background-color: transparent; */
+}
+
+button[type=submit]:hover {
+  background-color: var(--color-accent);
+  color: #fff;
+}

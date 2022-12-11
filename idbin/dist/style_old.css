@@ -1,0 +1,52 @@
+html, body {
+    color: #333;
+    background-color: #fff9ea;
+    padding: 0;
+    margin: 0;
+    font-family: sans-serif;
+}
+.menu {
+    position: fixed;
+    width: 150px;
+    left: 0;
+}
+.menu ul { list-style: none; margin: 0; }
+
+body {
+    padding: 150px 0px 0px 200px;
+    max-width: 38vw;
+}
+
+main {
+    padding-bottom: 4em;
+}
+.role-input {
+    width: 8em;
+}
+
+.service-table, .login-table, .permission-matrix, .invite-list, .audit-logs, .account-details, .services, th, td {
+    border: 1px solid #555;
+    border-collapse: collapse;
+}
+.help-text {
+    text-decoration: underline dotted;
+    cursor: help;
+}
+.service-text {
+    text-decoration: underline dotted;
+    font-weight: bold;
+    cursor: help;
+}
+th, td {
+    padding: 0.75em;
+}
+th {
+    background-color: antiquewhite;
+}
+.hatch {
+    background-image: 
+        linear-gradient(45deg, transparent 45%, #888 50%, transparent 55%, transparent 100%),
+        linear-gradient(-45deg, transparent 45%, #888 50%, transparent 55%, transparent 100%);
+    background-size: 8px 8px;
+    background-position: 4px 4px;
+}

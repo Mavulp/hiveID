@@ -1,36 +1,55 @@
 <!DOCTYPE html>
-<title>{% block title %}{{ title }}{% endblock %}HiveID</title>
-<link rel="stylesheet" href="/static/style.css" />
-<link rel="icon" href="/static/favicon.png">
-<meta charset="utf-8" />
-{% block head %}{% endblock %}
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/static/style.css" />
+        <link rel="icon" href="/static/favicon.png">
+        <title>{% block title %}{{ title }}{% endblock %}HiveID</title>
 
+        <!-- Dynamic head slot -->
+        {% block head %}{% endblock %}
+        {% block header %}{% endblock %}
+    </head>
 
-{% block header %}{% endblock %}
-<main>
-<nav class="menu">
-<ul>
-<li>{% call navlink("/", "Home", current_page) %}
-<li>{% call navlink("/account", "Account", current_page) %}
-{% if admin %}
-<li>Admin/
-<ul>
-<li>{% call navlink("/admin/services", "Services", current_page) %}
-<li>{% call navlink("/admin/invite", "Invites", current_page) %}
-<li>{% call navlink("/admin/audit", "Audit log", current_page) %}
-<li>{% call navlink("/admin/permissions", "Permissions", current_page) %}
-</ul>
-{% endif %}
-</ul>
-</nav>
+    <body>
+        <aside>
+            <nav>
+                <ul>
+                    <li>{% call navlink("/", "Home", current_page) %}</li>
+                    <li>{% call navlink("/account", "Account", current_page) %}</li>
+                </ul>
+                {% if admin %}
+                <hr>
+                <ul>
+                    <li>{% call navlink("/admin/services", "Services", current_page) %}
+                    <li>{% call navlink("/admin/invite", "Invites", current_page) %}
+                    <li>{% call navlink("/admin/audit", "Audit log", current_page) %}
+                    <li>{% call navlink("/admin/permissions", "Permissions", current_page) %}
+                </ul>
+                {% endif %}
+            </nav>
 
-{% block content %}{% endblock %}
-</main>
+            <footer>
+                <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#D76144">
+                    <path d="M0 0h24v24H0V0z" fill="none"/>
+                    <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                </svg>
+                <p> Made by <a href="https://github.com/mavulp" target="_blank">Mavulp</a> in 2022 </p>
+            </footer>
+        </aside>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </body>
+</html>
 
 {% macro navlink(uri, name, current_page) %}
-    {% if current_page == uri %}
-<b>{{ name }}</b>
-    {% else %}
-<a href="{{ uri }}">{{ name }}</a>   
-    {% endif %}
+{% if current_page == uri %}
+    <a href="{{ uri }}" class="active-link">{{ name }}</a>   
+{% else %}
+    <a href="{{ uri }}">{{ name }}</a>   
+{% endif %}
 {% endmacro %}
+
