@@ -42,9 +42,9 @@
           </div>
           <button type="submit">Login</button>
           {% if login_failed %}
-          <p class="error">Invalid username or password</p>
+          <p class="error">Invalid username or password.</p>
           {% endif %}
-          <input type="hidden" name="service" value="{{ service }}">
+          <input type="hidden" name="service" value="{{ service.name }}">
           <input type="hidden" name="redirect" value="{{ redirect_to }}">
         </form>
       </div>
