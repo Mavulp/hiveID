@@ -9,6 +9,7 @@
   gap: 0;
   border: 1px solid var(--color-border);
   text-decoration: none;
+  margin-bottom: 20px;
 }
 
 .service-item h2 {

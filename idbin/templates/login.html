@@ -1,51 +1,54 @@
 <!DOCTYPE html>
-<title>Login - HiveID</title>
-<link rel="stylesheet" href="/static/style.css" />
-<link rel="icon" href="/static/favicon.png">
-<meta charset="utf-8" />
-<style>
-.error { margin-top: 1em; background-color: #ffa9a9; padding: 0.5em; width: 14em; }
-#retry { display: none; }
-#retry:target { display: block !important; }
-</style>
-<main>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="icon" href="/static/favicon.png">
+    <title>Login - HiveID</title>
+  </head>
+  <body class="centered-content">
+    <div class="route-login">
+      <div class="login-header">
+        <div class="service-logo">
+          <img src="https://hivecom.net/public/favicon.png" alt="">
+        </div>
+        <div class="service-content">
+          <p>Authenticate and start using <b>{{ service_display }}</b> using your Hive ID credentials.</p>
+        </div>
+      </div>
+      <div class="login-form">
+        <form action="/api/login" method="post">
+          <div class="input-item">
+            <label for="username">Username</label>
 
-<form action="/api/login" method="post" >
+            {% match username %}
+            {% when Some with (username) %}
+            <input type="text" name="username" value="{{ username }}" required placeholder="Your Username" />
+            {% when None %}
+            <input type="text" name="username" autofocus required placeholder="Your Username" />
+            {% endmatch %}
+          </div>
+          <div class="input-item">
+            <label for="password">Password</label>
 
-<img src="/static/favicon.png" />
-<p style="color:#333;">
-Authenticate with <span class="service-text" title="Some description">{{ service_display }}</span> using your Hivecom ID
+            {% match username %}
+            {% when Some with (username) %}
+            <input type="password" name="password" autofocus required placeholder="****************" />
+            {% when None %}
+            <input type="password" name="password" required placeholder="****************" />
+            {% endmatch %}
+          </div>
+          <button type="submit">Login</button>
+          <input type="hidden" name="service" value="{{ service }}">
+          <input type="hidden" name="redirect" value="{{ redirect_to }}">
+        </form>
 
-<table class="login-table">
-
-<tr>
-<td><label for="username">Username:</label>
-{% match username %}
-{% when Some with (username) %}
-<td><input type="text" name="username" value="{{ username }}" required />
-{% when None %}
-<td><input type="text" name="username" autofocus required />
-{% endmatch %}
-
-<tr>
-<td><label for="password">Password:</label>
-{% match username %}
-{% when Some with (username) %}
-<td><input type="password" name="password" autofocus required />
-{% when None %}
-<td><input type="password" name="password" required />
-{% endmatch %}
-
-<tr>
-<td colspan="2"><button style="width:100%;">Login</button>
-
-<input type="hidden" name="service" value="{{ service }}">
-<input type="hidden" name="redirect" value="{{ redirect_to }}">
-
-</table>
-
-<p id="retry" class="cool error">Invalid username or password
-
-</form>
-
-</main>
+        {% if login_failed %}
+        <p class="error">Invalid username or password</p>
+        {% endif %}
+      </div>
+    </div>
+  </body>
+</html>
