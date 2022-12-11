@@ -225,3 +225,9 @@ b {
   padding-top: 20px;
   color: var(--color-accent);
 }
+
+.logout {
+  position: fixed;
+  right: 40px;
+  top: 40px;
+}
