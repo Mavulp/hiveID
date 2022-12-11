@@ -3,10 +3,11 @@ use std::{collections::HashMap, pin::Pin, sync::Arc};
 use anyhow::Context;
 use axum::{
     body::{boxed, BoxBody, Empty},
-    extract::{FromRequest, Query, FromRequestParts},
+    extract::{FromRequestParts, Query},
     http::{
         header::{COOKIE, LOCATION, SET_COOKIE},
-        Response, StatusCode, request::Parts,
+        request::Parts,
+        Response, StatusCode,
     },
     response::IntoResponse,
     routing::{get, post},
@@ -30,7 +31,7 @@ pub struct AuthCallback(
     >,
 );
 
-pub fn api_route(client: IdpClient, cb: Option<AuthCallback>) -> Router {
+pub fn api_route(_client: IdpClient, cb: Option<AuthCallback>) -> Router {
     let mut router = Router::new()
         .route("/authorize", get(authorize_with_cookie))
         .route("/revoke", post(revoke_token))
@@ -120,7 +121,7 @@ where
 {
     type Rejection = ();
 
-    async fn from_request_parts(req: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(req: &mut Parts, _state: &B) -> Result<Self, Self::Rejection> {
         let mut jar = CookieJar::new();
 
         if let Some(Ok(cookie)) = req.headers.get(COOKIE).map(|c| c.to_str()) {

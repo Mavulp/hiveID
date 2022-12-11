@@ -22,12 +22,12 @@ mod audit;
 mod error;
 mod home;
 mod invite;
+mod logging;
 mod login;
-mod services;
-// mod oauth;
 mod permissions;
 mod refresh;
 mod register;
+mod services;
 mod status;
 
 pub type Connection = tokio_rusqlite::Connection;
@@ -37,11 +37,12 @@ const MIGRATIONS: [M; 1] = [M::up(include_str!("../migrations/0001_initial.sql")
 pub fn api_route(
     db: tokio_rusqlite::Connection,
     secret_key: SecretKey,
-    serve_dir: PathBuf,
+    serve_dir: Option<PathBuf>,
     statuses: Statuses,
-) -> Router {
+) -> anyhow::Result<Router> {
+    let idp_refresh_address = env::var("IDP_REFRESH_ADDR")?;
     let variables = Variables {
-        idp_refresh_address: String::from("https://id.hivecom.net/refresh"),
+        idp_refresh_address,
         idp_login_address: String::from("/login"),
         token_duration_seconds: 60 * 60,
         service_name: String::from("idbin"),
@@ -49,7 +50,7 @@ pub fn api_route(
 
     let client = IdpClient::default();
 
-    Router::new()
+    let mut router = Router::new()
         .route("/", get(home::page))
         .route("/login", get(login::page))
         .route("/refresh", post(refresh::post_refresh_token))
@@ -85,15 +86,20 @@ pub fn api_route(
         .route("/api/permissions", post(permissions::post_permissions))
         .route("/api/account", post(account::post_account))
         .nest("/auth", idlib::api_route(client, None))
-        .nest_service(
-            "/static/",
-            get_service(ServeDir::new(serve_dir)).handle_error(handle_error),
-        )
         .layer(Extension(IdpClient::default()))
         .layer(Extension(Arc::new(variables)))
         .layer(Extension(db))
         .layer(Extension(secret_key))
-        .layer(Extension(statuses))
+        .layer(Extension(statuses));
+
+    if let Some(serve_dir) = serve_dir {
+        router = router.nest_service(
+            "/static/",
+            get_service(ServeDir::new(serve_dir)).handle_error(handle_error),
+        );
+    }
+
+    Ok(router)
 }
 
 async fn handle_error(_err: std::io::Error) -> impl IntoResponse {
@@ -126,11 +132,10 @@ async fn health() -> Result<Response<BoxBody>, Error> {
     Ok(response)
 }
 
-async fn run() {
-    let _config_file: PathBuf = env::var("CONFIG_FILE").expect("CONFIG_FILE not set").into();
+async fn run() -> Result<(), anyhow::Error> {
     let db_path: PathBuf = env::var("DB_PATH").expect("DB_PATH not set").into();
-    let serve_dir: PathBuf = env::var("SERVE_DIR").expect("SERVE_DIR not set").into();
-    let secret_key = SecretKey::from_env();
+    let serve_dir: Option<PathBuf> = env::var("SERVE_DIR").ok().map(|p| p.into());
+    let secret_key = SecretKey::from_env()?;
 
     let bind_addr: SocketAddr = env::var("BIND_ADDRESS")
         .expect("BIND_ADDRESS not set")
@@ -150,7 +155,12 @@ async fn run() {
 
     let statuses = Statuses(Arc::new(RwLock::new(Vec::new())));
 
-    let router = api_route(conn.clone(), secret_key, serve_dir, statuses.clone());
+    let router = logging::tracing_layer(api_route(
+        conn.clone(),
+        secret_key,
+        serve_dir,
+        statuses.clone(),
+    )?);
 
     tokio::spawn(async move {
         status_poll_loop(conn, statuses).await;
@@ -161,15 +171,17 @@ async fn run() {
         .serve(router.into_make_service())
         .await
         .unwrap();
+
+    Ok(())
 }
 
 fn main() {
     dotenv::dotenv().ok();
-    env_logger::init();
+    logging::init();
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(async { run().await })
+        .block_on(async { run().await.unwrap() })
 }
