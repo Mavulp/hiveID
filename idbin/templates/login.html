@@ -12,7 +12,11 @@
     <div class="route-login">
       <div class="login-header">
         <div class="service-logo">
-          <img src="https://hivecom.net/public/favicon.png" alt="">
+          {% if let Some(icon) = service.icon %}
+            <img src="{{ icon }}" />
+            {% else %}
+            <div class="service-placeholder"></div>
+            {% endif %}
         </div>
         <div class="service-content">
           <p>Authenticate and start using <b>{{ service.nice_name }}</b> using your Hive ID credentials.</p>

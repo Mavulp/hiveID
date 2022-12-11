@@ -18,7 +18,11 @@
       <li>
         <a href="/redirect?service={{ service.name }}" class="service-item">
           <div class="service-logo">
-            <img src="{{ service.logo }}" alt="">
+            {% if let Some(icon) = service.icon %}
+            <img src="{{ icon }}" />
+            {% else %}
+            <div class="service-placeholder"></div>
+            {% endif %}
           </div>
           <div class="service-content">
             <h2>{{ service.nice_name }}</h2>
