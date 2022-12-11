@@ -18,16 +18,19 @@ use serde::Deserialize;
 use sha2::Sha256;
 use tokio_rusqlite::Connection;
 
-use crate::{error::Error, into_response};
+use crate::{
+    error::Error,
+    into_response,
+    services::{get_service, Service},
+};
 
 #[derive(Template)]
 #[template(path = "login.html")]
-struct LoginPageTemplate<'a> {
-    service_display: &'a str,
-    service: String,
+struct LoginPageTemplate {
+    service: Service,
     redirect_to: String,
-    error_message: Option<String>,
     username: Option<String>,
+    login_failed: bool,
 }
 
 #[derive(Deserialize)]
@@ -35,33 +38,8 @@ pub(crate) struct LoginParams {
     service: String,
     redirect_to: String,
     username: Option<String>,
-}
-
-pub struct Service {
-    pub name: String,
-    pub nice_name: String,
-    pub secret: String,
-    pub callback_url: String,
-}
-
-pub async fn get_service(db: &Connection, service_name: String) -> Option<Service> {
-    db.call(move |conn| {
-        conn.query_row(
-            "SELECT name, nice_name, secret, callback_url FROM services WHERE name = ?1",
-            params![&service_name],
-            |row| {
-                Ok(Service {
-                    name: row.get(0).unwrap(),
-                    nice_name: row.get(1).unwrap(),
-                    secret: row.get(2).unwrap(),
-                    callback_url: row.get(3).unwrap(),
-                })
-            },
-        )
-        .optional()
-        .unwrap()
-    })
-    .await
+    #[serde(default)]
+    login_failed: bool,
 }
 
 async fn get_groups_for_user(db: &Connection, username: String, service: String) -> Vec<String> {
@@ -83,14 +61,13 @@ pub(crate) async fn page(
     Extension(db): Extension<Connection>,
 ) -> Result<Response<BoxBody>, Error> {
     let service = get_service(&db, params.service.clone())
-        .await
+        .await?
         .ok_or_else(|| Error::InvalidService(params.service.clone()))?;
 
     let template = LoginPageTemplate {
-        service_display: &service.nice_name,
-        service: params.service,
+        service,
         redirect_to: params.redirect_to,
-        error_message: None,
+        login_failed: params.login_failed,
         username: params.username,
     };
 
@@ -119,8 +96,11 @@ pub(crate) async fn post_login(
         Ok(response) => Ok(response),
         Err(Error::InvalidLogin) => {
             let redirect = format!(
-                "/login?service={}&redirect_to={}&username={}#retry",
-                login.service, login.redirect, login.username
+                "/login?service={}&redirect_to={}&username={}&login_failed={}",
+                login.service,
+                login.redirect,
+                login.username,
+                urlencoding::encode("true")
             );
 
             let response = Response::builder()
@@ -176,7 +156,7 @@ pub(crate) async fn post_login_impl(
     }
 
     let service = get_service(&db, login.service.clone())
-        .await
+        .await?
         .ok_or_else(|| Error::InvalidService(login.service.clone()))?;
 
     let token = generate_jwt_for_user_and_service(db, username, &service)
