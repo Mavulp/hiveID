@@ -10,7 +10,7 @@ use axum::{
     Extension, Form,
 };
 
-use idlib::{AuthorizeCookie, Has, IdpClient, SecretKey};
+use idlib::{AuthorizeCookie, Has, IdpClient};
 
 use log::{debug, warn};
 use serde::Deserialize;

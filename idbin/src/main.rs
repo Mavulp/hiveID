@@ -17,18 +17,21 @@ use status::{status_poll_loop, Statuses};
 use tokio::sync::RwLock;
 use tower_http::services::ServeDir;
 
+
+
+
 mod account;
 mod audit;
 mod error;
 mod home;
 mod invite;
 mod login;
-mod services;
-// mod oauth;
 mod permissions;
 mod refresh;
 mod register;
+mod services;
 mod status;
+mod logging;
 
 pub type Connection = tokio_rusqlite::Connection;
 
@@ -127,7 +130,6 @@ async fn health() -> Result<Response<BoxBody>, Error> {
 }
 
 async fn run() {
-    let _config_file: PathBuf = env::var("CONFIG_FILE").expect("CONFIG_FILE not set").into();
     let db_path: PathBuf = env::var("DB_PATH").expect("DB_PATH not set").into();
     let serve_dir: PathBuf = env::var("SERVE_DIR").expect("SERVE_DIR not set").into();
     let secret_key = SecretKey::from_env();
@@ -150,7 +152,8 @@ async fn run() {
 
     let statuses = Statuses(Arc::new(RwLock::new(Vec::new())));
 
-    let router = api_route(conn.clone(), secret_key, serve_dir, statuses.clone());
+    let router = logging::tracing_layer(api_route(conn.clone(), secret_key, serve_dir, statuses.clone()));
+
 
     tokio::spawn(async move {
         status_poll_loop(conn, statuses).await;
@@ -165,7 +168,7 @@ async fn run() {
 
 fn main() {
     dotenv::dotenv().ok();
-    env_logger::init();
+    logging::init();
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()

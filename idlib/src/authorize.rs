@@ -10,9 +10,9 @@ use axum::{
     body::{boxed, Empty},
     extract::{
         rejection::{ExtensionRejection, TypedHeaderRejection},
-        FromRequest, FromRequestParts,
+        FromRequestParts,
     },
-    http::{header::SET_COOKIE, HeaderValue, StatusCode, request::Parts},
+    http::{header::SET_COOKIE, request::Parts, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Extension, Json,
 };
@@ -150,7 +150,8 @@ where
     async fn from_request_parts(req: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
         let Cookies(jar) = Cookies::from_request_parts(req, state).await.unwrap();
 
-        let Extension(variables) = Extension::<Arc<Variables>>::from_request_parts(req, state).await?;
+        let Extension(variables) =
+            Extension::<Arc<Variables>>::from_request_parts(req, state).await?;
 
         let token = match jar.get("__auth") {
             Some(token) => token,
@@ -181,7 +182,8 @@ where
         // tokens are only valid for 60 days
         if now > issued_at + Duration::from_secs(variables.token_duration_seconds as u64) {
             debug!("Token expired, trying to refresh");
-            let Extension(idp_client) = Extension::<IdpClient>::from_request_parts(req, state).await?;
+            let Extension(idp_client) =
+                Extension::<IdpClient>::from_request_parts(req, state).await?;
 
             match try_refresh_token(&variables, idp_client, token.value().to_string()).await {
                 Ok(token) => {
@@ -219,6 +221,8 @@ where
                 return Err(AuthorizationRejection::Forbidden("todo"));
             }
         }
+
+        debug!("Got auth cookie for {:?}", payload.name);
 
         Ok(AuthorizeCookie(
             payload,
