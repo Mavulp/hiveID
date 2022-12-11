@@ -15,11 +15,12 @@
 <th>Status
 
 {% for service in services %}
+{% let (service, status) = service %}
 <tr>
 <td><a href="/redirect?service={{ service.name }}">{{ service.nice_name }}</a>
-<td>{{ service.desc }}
+<td>{{ service.description }}
 <td>
-{% if let Some(code) = service.status %}
+{% if let Some(code) = status %}
 {{ code }}
 {% else %}
 N/A

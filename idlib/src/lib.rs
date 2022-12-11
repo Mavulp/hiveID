@@ -1,9 +1,15 @@
 #![feature(adt_const_params)]
 
-use hmac::{Hmac, Mac};
+use base64::DecodeError;
+use hmac::{digest::InvalidLength, Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
-use std::{env, sync::Arc};
+use std::{
+    env::{self, VarError},
+    num::ParseIntError,
+    sync::Arc,
+};
+use thiserror::Error;
 
 mod authenticate;
 mod authorize;
@@ -22,14 +28,26 @@ pub struct PermissionResponse {
 #[derive(Clone)]
 pub struct SecretKey(pub Arc<Hmac<Sha256>>);
 
-impl SecretKey {
-    pub fn from_env() -> Self {
-        let secret_key: String = env::var("IDP_SECRET_KEY").expect("IDP_SECRET_KEY not set");
-        let secret_key = base64::decode(&secret_key).unwrap();
-        let secret_key = Hmac::<Sha256>::new_from_slice(&secret_key)
-            .expect("Failed to create HMAC from secret key");
+#[derive(Debug, Error)]
+pub enum FromEnvError {
+    #[error("Environment variable {0} is missing")]
+    VarError(&'static str),
+    #[error("{0}")]
+    ParseError(#[from] ParseIntError),
+    #[error("{0}")]
+    DecodeError(#[from] DecodeError),
+    #[error("{0}")]
+    InvalidLengthError(#[from] InvalidLength),
+}
 
-        SecretKey(Arc::new(secret_key))
+impl SecretKey {
+    pub fn from_env() -> Result<Self, FromEnvError> {
+        let secret_key: String =
+            env::var("IDP_SECRET_KEY").map_err(|_| FromEnvError::VarError("IDP_SECRET_KEY"))?;
+        let secret_key = base64::decode(&secret_key)?;
+        let secret_key = Hmac::<Sha256>::new_from_slice(&secret_key)?;
+
+        Ok(SecretKey(Arc::new(secret_key)))
     }
 }
 
@@ -44,12 +62,17 @@ pub struct Variables {
 }
 
 impl Variables {
-    pub fn from_env() -> Self {
-        Variables {
-            idp_login_address: env::var("IDP_LOGIN_ADDR").expect("IDP_LOGIN_ADDR not set"),
-            idp_refresh_address: env::var("IDP_REFRESH_ADDR").expect("IDP_REFRESH_ADDR not set"),
-            token_duration_seconds: env::var("TOKEN_DURATION_SECONDS").expect("TOKEN_DURATION_SECONDS not set").parse().expect("Expected integer"),
-            service_name: env::var("SERVICE_NAME").expect("SERVICE_NAME not set"),
-        }
+    pub fn from_env() -> Result<Self, FromEnvError> {
+        Ok(Variables {
+            idp_login_address: env::var("IDP_LOGIN_ADDR")
+                .map_err(|_| FromEnvError::VarError("IDP_LOGIN_ADDR"))?,
+            idp_refresh_address: env::var("IDP_REFRESH_ADDR")
+                .map_err(|_| FromEnvError::VarError("IDP_REFRESH_ADDR"))?,
+            token_duration_seconds: env::var("TOKEN_DURATION_SECONDS")
+                .map_err(|_| FromEnvError::VarError("TOKEN_DURATION_SECONDS"))?
+                .parse()?,
+            service_name: env::var("SERVICE_NAME")
+                .map_err(|_| FromEnvError::VarError("SERVICE_NAME"))?,
+        })
     }
 }

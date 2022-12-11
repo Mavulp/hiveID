@@ -3,10 +3,11 @@ use std::{collections::HashMap, pin::Pin, sync::Arc};
 use anyhow::Context;
 use axum::{
     body::{boxed, BoxBody, Empty},
-    extract::{Query, FromRequestParts},
+    extract::{FromRequestParts, Query},
     http::{
         header::{COOKIE, LOCATION, SET_COOKIE},
-        Response, StatusCode, request::Parts,
+        request::Parts,
+        Response, StatusCode,
     },
     response::IntoResponse,
     routing::{get, post},

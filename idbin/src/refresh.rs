@@ -9,9 +9,7 @@ use jwt::VerifyWithKey;
 use sha2::Sha256;
 
 use crate::{
-    error::Error,
-    login::{generate_jwt_for_user_and_service, get_service},
-    Connection,
+    error::Error, login::generate_jwt_for_user_and_service, services::get_service, Connection,
 };
 
 #[axum::debug_handler]
@@ -26,7 +24,7 @@ pub(crate) async fn post_refresh_token(
 
 async fn refresh_token(db: Connection, request: RefreshTokenRequest) -> Result<String, Error> {
     let service = get_service(&db, request.service.clone())
-        .await
+        .await?
         .ok_or_else(|| Error::InvalidService(request.service.clone()))?;
 
     let secret_key = base64::decode(&service.secret).context("Failed to decode service secret")?;

@@ -5,8 +5,6 @@
 <meta charset="utf-8" />
 <style>
 .error { margin-top: 1em; background-color: #ffa9a9; padding: 0.5em; width: 14em; }
-#retry { display: none; }
-#retry:target { display: block !important; }
 </style>
 <main>
 
@@ -14,7 +12,7 @@
 
 <img src="/static/favicon.png" />
 <p style="color:#333;">
-Authenticate with <span class="service-text" title="Some description">{{ service_display }}</span> using your Hivecom ID
+Authenticate with <span class="service-text" title="Some description">{{ service.nice_name }}</span> using your Hivecom ID
 
 <table class="login-table">
 
@@ -39,12 +37,14 @@ Authenticate with <span class="service-text" title="Some description">{{ service
 <tr>
 <td colspan="2"><button style="width:100%;">Login</button>
 
-<input type="hidden" name="service" value="{{ service }}">
+<input type="hidden" name="service" value="{{ service.name }}">
 <input type="hidden" name="redirect" value="{{ redirect_to }}">
 
 </table>
 
-<p id="retry" class="cool error">Invalid username or password
+{% if login_failed %}
+<p class="error">Invalid username or password
+{% endif %}
 
 </form>
 

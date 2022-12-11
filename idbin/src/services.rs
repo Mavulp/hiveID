@@ -14,15 +14,11 @@ use idlib::{AuthorizeCookie, Has, Payload};
 use log::warn;
 use serde::Deserialize;
 
-use rusqlite::params;
-use serde_rusqlite::from_rows;
+use rusqlite::{params, OptionalExtension};
+use serde_rusqlite::{from_row, from_rows};
 use tokio_rusqlite::Connection;
 
-use crate::{
-    audit::{self},
-    error::Error,
-    into_response,
-};
+use crate::{audit, error::Error, into_response};
 
 fn redirect_result(result: Result<(), Error>, id: Option<&str>) -> impl IntoResponse {
     let id = id.unwrap_or("top");
@@ -56,16 +52,16 @@ struct ServicesPageTemplate {
 }
 
 #[derive(Debug, Deserialize)]
-struct Service {
-    name: String,
-    nice_name: String,
-    description: String,
-    icon: Option<String>,
-    secret: String,
-    callback_url: String,
+pub struct Service {
+    pub name: String,
+    pub nice_name: String,
+    pub description: String,
+    pub icon: Option<String>,
+    pub secret: String,
+    pub callback_url: String,
 
     #[serde(skip_deserializing)]
-    roles: Vec<String>,
+    pub roles: Vec<String>,
 }
 
 fn get_roles_for_service(conn: &rusqlite::Connection, name: &str) -> Vec<String> {
@@ -85,7 +81,7 @@ fn get_roles_for_service(conn: &rusqlite::Connection, name: &str) -> Vec<String>
     roles
 }
 
-async fn get_all_services(db: &Connection) -> Result<Vec<Service>, Error> {
+pub async fn get_all_services(db: &Connection) -> Result<Vec<Service>, Error> {
     db.call(|conn| {
         let mut stmt = conn
             .prepare(
@@ -102,6 +98,24 @@ async fn get_all_services(db: &Connection) -> Result<Vec<Service>, Error> {
         }
 
         Ok(services)
+    })
+    .await
+}
+
+pub async fn get_service(db: &Connection, service_name: String) -> Result<Option<Service>, Error> {
+    db.call(move |conn| {
+        let service = conn
+            .query_row(
+                "SELECT name, nice_name, description, icon, secret, callback_url \
+                FROM services
+                WHERE name=?1",
+                params![service_name],
+                |row| Ok(from_row::<Service>(row).unwrap()),
+            )
+            .optional()
+            .context("Failed to query service")?;
+
+        Ok(service)
     })
     .await
 }
