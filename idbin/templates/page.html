@@ -14,9 +14,7 @@
     </head>
 
     <body>
-        <form action="/auth/logout" method="post" class="logout">
-            <button type="submit">Logout</button>
-        </form>
+        
 
         <aside>
             <nav>
@@ -33,6 +31,10 @@
                     <li>{% call navlink("/admin/permissions", "Permissions", current_page) %}
                 </ul>
                 {% endif %}
+                <hr>
+                <form action="/auth/logout" method="post" class="logout">
+                    <button type="submit">Logout</button>
+                </form>
             </nav>
 
             <footer>
