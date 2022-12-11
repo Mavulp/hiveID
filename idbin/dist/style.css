@@ -230,6 +230,7 @@ b {
   display: flex;
   width: 100%;
   justify-content: flex-end;
+  padding-right: 40px;
   /* position: fixed;
   right: 40px;
   top: 40px;
