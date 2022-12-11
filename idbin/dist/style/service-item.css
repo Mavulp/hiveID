@@ -69,3 +69,11 @@
   background-color: var(--color-accent-light);
   color: var(--color-accent);
 }
+
+.service-placeholder {
+  display: block;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  background-color: var(--color-bg-dark);
+}
