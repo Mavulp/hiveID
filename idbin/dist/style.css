@@ -3,10 +3,8 @@
 @import url("./style/service-item.css");
 @import url("./style/form.css");
 @import url("./style/login.css");
-
-/* New */
 @import url("./style/services.css");
-
+@import url("./style/table.css");
 
 @font-face {
   font-family: "Rubik";
@@ -212,7 +210,7 @@ main {
 }
 
 .container-large {
-  max-width: 788px;
+  max-width: 824px;
 }
 
 hr {

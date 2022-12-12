@@ -1,0 +1,73 @@
+table {
+  border-collapse: collapse;
+  border-radius: 10px;
+  width: 100%;
+  box-shadow: 0 0 0 1px var(--color-border); 
+  background-color: var(--color-bg);
+}
+
+table th,
+table td {
+  text-align: left;
+  padding: 10px;
+}
+
+table th {
+  color: var(--color-text);
+  opacity: 0.5;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 10px;
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+}
+
+table td {
+  font-size: 0.9rem;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+table th:last-child,
+table td:last-child {
+  border-right: none;
+}
+
+table tr:last-child td {
+  border-bottom: none;
+}
+
+/* table tr:first-child td {
+  border-top: 1px solid var(--color-border);
+} */
+
+table .status {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 0 10px;
+  height: 25px;
+  line-height: 25px;
+  font-size: 0.8rem;
+  font-weight: 400 !important;
+}
+
+table a{
+  text-decoration: underline;
+  font-size: 1rem;
+  color: var(--color-accent) !important;
+}
+
+table a:hover {
+  text-decoration: none !important;
+}
+
+table .status.used {
+  background-color: #bbf3bb;
+  color: var(--color-text);
+}
+
+table .status.pending {
+  background-color: rgb(252, 202, 138);
+  color: var(--color-text);
+}

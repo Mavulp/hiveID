@@ -5,6 +5,10 @@
   margin-bottom: 25px;
 }
 
+.input-item [data-title] {
+  min-width: 156px;
+}
+
 .input-item.last {
   margin-bottom: 0;
 }
@@ -67,7 +71,7 @@ input:active {
 }
 
 button {
-  /* transition: 0.15s all ease-in-out; */
+  transition: 0.1s all ease-in-out;
   font-weight: 400;
   padding: 10px 20px;
   font-size: 0.96rem;
@@ -79,6 +83,11 @@ button {
   color: var(--color-accent);
   cursor: pointer;
   white-space: nowrap;
+}
+
+button:hover {
+  background-color: var(--color-accent);
+  color: var(--color-bg);
 }
 
 button.small {
@@ -95,7 +104,6 @@ button.normal {
 
 button.normal:hover {
   background-color: var(--color-placeholder) !important;
-
 }
 
 button[type=submit]:hover {
