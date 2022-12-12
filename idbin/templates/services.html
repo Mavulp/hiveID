@@ -2,95 +2,115 @@
 
 {% block title %}Services - {% endblock %}
 
-{% block header %}
-<style>
-.ok { background-color: #a9ffa9; }
-.bad { background-color: #ffa9a9; }
-table { margin-bottom: 1em; }
-</style>
-{% endblock %}
-
 {% block content %}
-<h2 id="top">Services</h2>
-<p>Settings for all services connected to <b>HiveID</b>.
+<div class="route-services">
+  <div class="container-small">
+    <h1>Services</h1>
+    <p>Settings for all services connected to HiveID. </p>
 
-<!-- create new service -->
-<form action="/admin/services/create" method="post" >
-<table class="account-details">
-<tr>
-<th colspan="2">Create a new service
-<tr>
-<td><input type="text" class="role-input" placeholder="new-service-name" name="name" />
-<td><input type="submit" value="Create" />
-</table>
-</form>
+    <!-- Create a service -->
+    <h4>Add a service</h4>
+    <form class="form-wrapper create-service" action="/admin/services/create" method="post">
+      <div class="form-wrapper-box">
+        <div class="input-item">
+          <label for="service">Name</label>
+          <input type="text" placeholder="new-service-name" name="name">
+        </div>
 
-<!-- all services -->
-{% for service in services %}
-<table class="service-table" id="{{ service.name }}">
-<form action="/admin/services" method="post" enctype="multipart/form-data">
-<input type="hidden" name="name" value="{{ service.name }}" />
-<tr>
-<th class="help-text" title="This is the internal ID of the service." colspan="2">{{ service.name }}
+        <button class="normal" type="submit">Create</button>
+      </div>
+    </form>
 
-<tr>
-<td><label class="help-text" title="The icon which is displayed when logging into the service." for="icon">Icon:</label>
-<td>
-{% if let Some(icon) = service.icon %}
-<img src="{{ icon }}" />
-{% endif %}
-<input type="file" name="icon" accept="image/png" />
+    <h4>Services</h4>
 
-<tr>
-<td><label class="help-text" title="The name of the service which is shown when logging into the service." for="display-name">Display name:</label>
-<td><input type="text" name="display-name" value="{{ service.nice_name }}" />
+    {% for service in services %}
+    <div class="form-wrapper" id="{{ service.name }}">
+      <form action="/admin/services" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="name" value="{{ service.name }}" />
 
-<tr>
-<td><label class="help-text" title="A description of the service." for="Description">Description:</label>
-<td><textarea cols="30" rows="4" name="description">{{ service.description }}</textarea>
+        <!-- Service id -->
+        <div class="form-wrapper-box">
+          <strong class="form-name" data-title="Internal service identifier.">{{service.name}}</strong>
+        </div>
 
-<tr>
-<td><label class="help-text" title="The URL which will receive the authentication cookie/token. This should be an absolute URI in most cases. The given URL should also allow HiveID in its CORS settings." for="callback-url">Callback URL:</label>
-<td><input type="text" name="callback-url" value="{{ service.callback_url }}" />
+        <div class="form-wrapper-box">
+          <div class="wrapper equal">
+            <!-- Service name -->
+            <div class="input-item">
+              <label for="display-name" data-title="The display name of the service.">Name</label>
+              <input type="text" name="display-name" value="{{ service.nice_name }}" placeholder="Display Name" />
+            </div>
 
+            <!-- Callback url -->
+            <div class="input-item">
+              <label for="callback-url" title="The URL which will receive the authentication cookie/token. This should be an absolute URI in most cases. The given URL should also allow HiveID in its CORS settings.">Callback URL</label>
+              <input type="text"  name="callback-url" placeholder="/callback/url" value="{{ service.callback_url }}" />
+            </div>
+          </div>
 
-<tr>
-<td colspan="2"><input type="submit" style="width:100%;" value="Update" />
-</form>
+          <!-- Description -->
+          <div class="input-item">
+            <label for="description" data-title="Description of the service.">Description</label>
+            <textarea name="description" placeholder="Service name">{{ service.description }}</textarea>
+          </div>
+          <button class="normal" type="submit">Update</button>
+        </div>  
+        <!-- Service icon -->
+        <div class="form-wrapper-box">
+          <div class="wrapper equal">
+            <div data-title="The icon which is displayed when logging into the service.">
+              <input type="file" name="icon" accept="image/png" />
+              <label for="icon">Upload an Icon</label>
+            </div>
+            {% if let Some(icon) = service.icon %}
+            <img src="{{ icon }}" />
+            {% endif %}
+          </div>
+        </div>
+      </form>
 
-<tr>
-<td><label class="help-text" title="Secret key used for encrypting JWT between HiveID and the service" for="secret">Secret key:</label>
-<td>
-<details>
-<summary>Show secret</summary>
-<input type="text" value="{{ service.secret }}" readonly="readonly" />
-</details>
-<button onclick="navigator.clipboard.writeText('{{service.secret}}')">Copy</button>
-<form action="/admin/services/secret/generate" method="post">
-<input type="hidden" name="name" value="{{ service.name }}" />
-<input type="submit" value="Generate new secret" />
-</form>
+      <div class="form-wrapper-box">
+        <strong data-title="Define specific roles for this service.">All Roles</strong>
 
-<tr><td colspan="2" class="help-text" title="These are the roles specific to this service.">roles
+        <!-- List roles -->
+        {% for role in service.roles %}
+        <form action="/admin/services/roles/delete" method="post" class="input-item two">
+          <input type="hidden" name="service-name" value="{{ service.name }}" />
+          <input type="text" name="delete" readonly value="{{ role }}" readonly>
+          <button type="submit">Delete</button>
+        </form>
+        {% endfor %}
 
-<!-- list all roles -->
-{% for role in service.roles %}
-<form action="/admin/services/roles/delete" method="post">
-<tr>
-<input type="hidden" name="service-name" value="{{ service.name }}" />
-<td><input type="text" name="role" class="role-input" value="{{ role }}" readonly="readonly" />
-<td><input type="submit" value="Delete" />
-</form>
-{% endfor %}
+        <!-- Create role -->
+        <form action="/admin/services/roles" method="post" class="input-item two no-m">
+          <input type="hidden" name="service-name" value="{{ service.name }}" />
+          <label for="role">Create a New Role</label>
+          <input type="text" placeholder="new-role-name" name="role">
+          <button class="normal" type="submit">Add Role</button>
+        </form>
+      </div>
 
-<!-- create new role -->
-<form action="/admin/services/roles" method="post">
-<input type="hidden" name="service-name" value="{{ service.name }}" />
-<tr>
-<td><input type="text" class="role-input" placeholder="new-role" name="role" />
-<td><input type="submit" value="Create new role" />
-</form>
-
-</table>
-{% endfor %}
+      
+      <!-- Secret key -->
+      <div class="form-wrapper-box last">
+        <div class="key-title">
+          <strong data-title="Secret key used for encrypting JWT between HiveID and the service">Secret key</strong>
+          <div class="divider"></div>
+          <button class="small normal" onclick="navigator.clipboard.writeText('{{service.secret}}')">Copy</button>
+          <form action="/admin/services/secret/generate" method="post">
+            <input type="hidden" name="name" value="{{ service.name }}" />
+            <button class="small" type="submit" >Generate</button>
+          </form>
+        </div>
+        <details>
+          <summary>
+            Show key
+          </summary>
+          <input readonly value="{{ service.secret }}">
+        </details>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
 {% endblock %}

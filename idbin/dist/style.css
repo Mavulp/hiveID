@@ -4,6 +4,10 @@
 @import url("./style/form.css");
 @import url("./style/login.css");
 
+/* New */
+@import url("./style/services.css");
+
+
 @font-face {
   font-family: "Rubik";
   src: url("/fonts/Rubik-VariableFont_wght.ttf") format("ttf supports variations"),
@@ -204,7 +208,7 @@ main {
 .container-large {
   margin-left: clamp(40px,10vw, 180px);
   width: 80%;
-  max-width: 592px;
+  max-width: 616px;
 }
 
 .container-large {
