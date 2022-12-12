@@ -17,19 +17,18 @@
         <table>
             <thead>
                 <tr>
-                <th>Status</th>
-                <th>Link</th>
-                <th>Created By</th>
-                <th>Created At</th>
-                <th>Used By</th>
-                <th>Used At</th>
-                <th>Revoke</th>
+                    <th>Status</th>
+                    <th>Link</th>
+                    <th>Created By</th>
+                    <th>Created At</th>
+                    <th>Used By</th>
+                    <th>Used At</th>
+                    <th>Revoke</th>
                 </tr>
             </thead>
             <tbody>
                 {% for link in links %}
                     <tr>   
-                        
                         <td>
                             {% if let Some(_) = link.used_by %}
                             <span class="status used">Used</span>
@@ -56,7 +55,6 @@
                             {{ used_ago|duration }}
                             {% endif %}
                         </td>
-                        <td>
                         <td>
                             {% if let None = link.used_by %}
                             <form action="/admin/invite/delete" method="post">
