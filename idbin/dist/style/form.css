@@ -5,7 +5,7 @@
   margin-bottom: 25px;
 }
 
-.input-item [data-title] {
+.input-item [data-title]:before {
   min-width: 156px;
 }
 
