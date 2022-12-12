@@ -4,39 +4,40 @@
 
 {% block header %}
 {% endblock %}
+
 {% block content %}
-<h2>Account settings</h2>
-<p>Account settings. You can change your email or password here.
-<form action="/account" method="post" >
-<table class="account-details">
-<tr>
-<td><label for="username">Username:</label>
-<td><input type="text" name="username" value="{{ username }}" readonly="readonly" required />
-
-<tr>
-<td><label for="email">Email:</label>
-<td><input type="email" name="email" value="{{ email }}" required />
-
-<tr>
-<td><label for="password">New password:</label>
-<td><input type="password" name="password" autocomplete="new-password" />
-
-<tr>
-<td><label for="password2">Repeat new password:</label>
-<td><input type="password" name="password2" autocomplete="new-password" />
-
-<tr>
-<td><label for="old_password">Current password:</label>
-<td><input type="password" name="old_password" autocomplete="current-password" required="required" />
-
-<tr>
-<td colspan="2"><input type="submit" style="width:100%;" value="Update" />
-</table>
-</form>
-<br>
-<form action="/auth/logout" method="post" >
-<table class="account-details">
-<td colspan="2"><input type="submit" style="width:100%;" value="Logout" />
-</table>
-</form>
+<div class="route-account">
+  <div class="container-small">
+    <h1>Your Account</h1>
+    <h4>User information</h4>
+    <form action="/account" method="post">
+      <div class="input-item">
+        <label for="username">Username</label>
+        <input type="text" readonly required name="username" placeholder="My Awesome Username" value="{{ username }}">
+      </div>
+      <div class="input-item">
+        <label for="email">Email</label>
+        <input type="email" required name="email" placeholder="email@provider.cum" value="{{ email }}">
+      </div>
+      <button type="submit">Update</button>
+    </form>
+    <hr>
+    <h4>Password</h4>
+    <form action="/account" method="post">
+      <div class="input-item">
+        <label for="old_password">Old Password</label>
+        <input type="password"  required name="old_password" autocomplete="current-password" placeholder="****************">
+      </div>
+      <div class="input-item">
+        <label for="password">New Password</label>
+        <input type="password"  required name="password" autocomplete="off" placeholder="********************">
+      </div>
+      <div class="input-item">
+        <label for="password2">Repeat New Password</label>
+        <input type="password"  required name="password2"  autocomplete="off" placeholder="********************">
+      </div>
+      <button type="submit">Update</button>
+    </form>
+  </div>
+</div>
 {% endblock %}

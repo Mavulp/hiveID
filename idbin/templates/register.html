@@ -1,95 +1,57 @@
 <!DOCTYPE html>
-<title>Register</title>
-<style>
-:root {
-  --shadow-color: 43deg 31% 62%;
-  --shadow-elevation-low:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.33),
-    0.9px 1px 1.5px -1.3px hsl(var(--shadow-color) / 0.32),
-    2.2px 2.4px 3.6px -2.6px hsl(var(--shadow-color) / 0.31);
-  --shadow-elevation-medium:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.35),
-    1.8px 1.9px 2.9px -0.9px hsl(var(--shadow-color) / 0.34),
-    4.5px 4.9px 7.4px -1.7px hsl(var(--shadow-color) / 0.33),
-    11px 12px 18.1px -2.6px hsl(var(--shadow-color) / 0.33);
-  --shadow-elevation-high:
-    0.6px 0.6px 0.9px hsl(var(--shadow-color) / 0.32),
-    3px 3.3px 5px -0.4px hsl(var(--shadow-color) / 0.32),
-    5.6px 6.1px 9.2px -0.7px hsl(var(--shadow-color) / 0.32),
-    9.3px 10.1px 15.2px -1.1px hsl(var(--shadow-color) / 0.31),
-    15px 16.3px 24.6px -1.5px hsl(var(--shadow-color) / 0.31),
-    23.5px 25.6px 38.6px -1.9px hsl(var(--shadow-color) / 0.31),
-    35.9px 39.1px 58.9px -2.2px hsl(var(--shadow-color) / 0.3),
-    52.9px 57.7px 86.9px -2.6px hsl(var(--shadow-color) / 0.3);
-}
-html, body { height: 100%; padding: 0; margin: 0; background-color: #fff9ea; color: #333; font-family: sans-serif; }
-nav { position: absolute; right: 0; margin: 0.5em; font-size: 1.25em; font-weight: bold; }
-table { text-align: end; border-spacing: 0; }
-p { width: 18em; color: #666; margin-left: auto; margin-right: auto; }
-tr { margin-top: 0.1em; }
-td { padding: 0.5em; }
-.a { display: table; width: 100%; height: 100%; }
-.b { display: table-cell; vertical-align: middle; padding: 3em; text-align: center; }
-.cool { border-radius: 4px; box-shadow: var(--shadow-elevation-medium); }
-.register {  display: inline-block; background-color: #fff; }
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="icon" href="/static/favicon.png">
+    <title>Register - HiveID</title>
+  </head>
+  <body class="centered-content">
+    <div class="route-register route-login">
+      <div class="register-header">
+        <h2>Register</h2>
+        <p>You've been invited by <b>{{ inviter }}</b> to join Hivecom.</p>
+        <p>After registration, you will be redirected to the Hive ID dashboard where you can access our applications.</p>
+      </div>
+  
+      <div class="login-form">
+        <form action="/register" method="post">
+          <div class="input-item">
+            <label for="username">Username</label>
+            {% match username %}
+            {% when Some with (username) %}
+            <input type="text" name="username" value="{{ username }}" required placeholder="My username here" />
+            {% when None %}
+            <input type="text" name="username" autofocus required placeholder="My username here" />
+            {% endmatch %}
+          </div>
+          <div class="input-item"> 
+            <label for="email">Email</label>
+            <input type="email" required name="email" placeholder="email@tmtu.com.eu.uk.com" autofill="email">
+          </div>
+          <div class="input-item">
+            <label for="password">Password</label>
+            {% match username %}
+            {% when Some with (username) %}
+            <input type="password" name="password" autofocus autofill="new-password" required />
+            {% when None %}
+            <input type="password" name="password" required autofill="new-password"/>
+            {% endmatch %}
+          </div>
+          <div class="input-item">
+            <label for="password2">Repeat Password</label>
+            <input type="password" required name="password2" placeholder="**********************">
+          </div>
+          <button type="submit">Register</button>
+          {% if let Some(error) = error_message %}
+          <p class="error">{{ error }}</p>
+          {% endif %}
 
-.footer { border-radius: 0 0 4px 4px; margin: 0 -0.3em -0.3em -0.3em; padding: 1em; text-align: center; }
-.error { background-color: #ffc8c8; color: #300;  }
-</style>
-<meta charset="utf-8" />
-
-<!--<nav>
-<i>Register</i>
-<a href="/permissions">Permissions</a>
-<a href="/status">Status</a>
-<a href="/audit">Audit</a>
-</nav>-->
-
-<div class="a">
-<div class="b">
-<form class="cool register" action="/register" method="post" >
-<h2 style="text-align:center;">Register account</h2>
-
-<p>You have been invited by <b>{{ inviter }}</b> to Hivecom.
-
-<p>After registering you will be sent to the dashboard where you can see all sites you have access to!
-
-<table style="margin:auto;">
-
-<tr>
-<td><label for="username">Username:</label>
-{% match username %}
-{% when Some with (username) %}
-<td><input type="text" name="username" value="{{ username }}" required />
-{% when None %}
-<td><input type="text" name="username" autofocus required />
-{% endmatch %}
-
-<tr>
-<td><label for="email">Email:</label>
-<td><input type="email" name="email" autofill="email" required />
-
-<tr>
-<td><label for="password">Password:</label>
-{% match username %}
-{% when Some with (username) %}
-<td><input type="password" name="password" autofocus autofill="new-password" required />
-{% when None %}
-<td><input type="password" name="password" required autofill="new-password"/>
-{% endmatch %}
-
-<tr>
-<td><label for="password2">Repeat password:</label>
-<td><input type="password" name="password2" autofill="new-password" required />
-
-<tr>
-<td colspan="2"><input type="submit" style="width:100%;" value="Register" />
-</table>
-
-{% if let Some(error) = error_message %}
-<tr>
-<td colspan=2 class="footer error">{{ error }}
-{% endif %}
-
-<input type="hidden" name="invite" value="{{ invite_key }}">
-</form>
+          <input type="hidden" name="invite" value="{{ invite_key }}">
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

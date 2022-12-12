@@ -1,0 +1,43 @@
+.route-login {
+  border-radius: 10px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 516px;
+  border: 1px solid var(--color-border);
+}
+
+.route-login .login-header {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  margin-bottom: 60px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.route-login form {
+  display: block;
+  padding: 0 60px 80px;
+}
+
+.route-login form button {
+  width: 100%;
+}
+
+.route-register .register-header {
+  text-align: center;
+  padding: 30px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 60px;
+}
+
+.route-register .register-header p:first-of-type {
+  display: block;
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+}
+
+.route-register .register-header p:last-of-type {
+  color: var(--color-text-dimmed);
+}

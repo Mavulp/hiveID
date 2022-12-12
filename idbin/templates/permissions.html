@@ -12,7 +12,8 @@
 {% endblock %}
 
 {% block content %}
-<h2>Permissions</h2>
+<div class="container-large"  style="padding-bottom:80px;">
+<h1>Permissions</h1>
 <p>Manage permissions for all Hivecom users.
 
 <table class="permission-matrix">
@@ -44,6 +45,10 @@
     {% endfor %}
 {% endfor %}
 </table>
+
+<br>
+<br>
+<br>
 
 <h2>Changes</h2>
 <p>List of changes to the permissions. These are the changes that will be applied when pressing the <i>Apply</i> button.
@@ -152,4 +157,5 @@ function updateSubmitForm() {
     }
 }
 </script>
+</div>
 {% endblock %}

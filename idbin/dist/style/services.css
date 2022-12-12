@@ -1,0 +1,132 @@
+.form-wrapper {
+  display: block;
+  border-radius: 10px;
+  /* padding: 20px; */
+  border: 1px solid var(--color-border);
+  margin-bottom: 40px;
+  background-color: var(--color-bg);
+}
+
+.form-wrapper img {
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  margin: 0 auto;
+  max-height: 156px;
+  max-width: 156px;
+}
+
+.form-wrapper-box {
+  border-bottom: 1px solid var(--color-border);
+  padding: 20px;
+  /* margin-bottom: 20px; */
+}
+
+.form-wrapper-box strong {
+  display: block;
+  margin-bottom: 15px;
+}
+
+.form-wrapper hr {
+  width: 100%;
+  margin: 20px auto;
+}
+
+.form-wrapper-box.last,
+.form-wrapper-box:only-of-type {
+  margin-bottom: 0;
+  border-bottom: none;
+}
+/* https://jokler.xyz/f/w4h81505/html */
+
+details summary {
+  border-radius: 5px;
+  border: 1px solid var(--color-border);
+  height: 30px;
+  line-height: 30px;
+  padding: 0 20px;
+  cursor: pointer;
+  color: var(--color-accent);
+}
+
+details summary:hover {
+  background-color: var(--color-bg-dark);
+}
+
+details[open] summary {
+  border-radius: 5px 5px 0 0 ;
+}
+
+details input[readonly] {
+  background: var(--color-bg-dark);
+  display: block;
+  padding: 20px;
+  border-radius: 0 0 5px 5px;
+  font-size: 1rem;
+  width: calc(100% - 42px);
+  border: 1px solid var(--color-border);
+  border-top: 0;
+}
+
+.divider {
+  flex: 1;
+}
+
+.key-title {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.key-title strong {
+  margin-bottom: 0;
+}
+
+.route-services {
+  margin-bottom: 156px;
+}
+
+.no-m {
+  margin-bottom: 0 !important;
+}
+
+.form-name {
+  font-weight: 800;
+  font-size: 2rem;
+  margin-bottom: 0 !important;
+}
+
+[data-title] {
+  position: relative;
+}
+
+[data-title]:hover:before {
+  bottom: calc(100% + 10px);
+  opacity: 1;
+  visibility: visible;
+  z-index: 100
+}   
+
+[data-title]:before {
+  transition: 0.1s all ease-in-out;
+  content: attr(data-title);
+  position: absolute;
+  padding: 8px;
+  bottom: 100%;
+  left: 0;
+  opacity: 0;
+  visibility: hidden;
+  z-index: -1;
+  background-color: var(--color-text);
+  color: var(--color-bg);
+  font-size: 0.9rem !important;
+  line-height: 1.3em;
+  max-width: 256px;
+  min-width: 80px;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  pointer-events: none !important;
+}

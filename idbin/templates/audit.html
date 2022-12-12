@@ -10,7 +10,8 @@
 {% endblock %}
 
 {% block content %}
-<h2>Audit logs</h2>
+<div class="container-large" style="padding-bottom:80px;">
+<h1>Audit logs</h2>
 <p>Logs of all actions against the account database.
 <table class="audit-logs">
 <tr>
@@ -24,4 +25,6 @@
 <td>{{ action.performed_by }}
 <td>{{ action.time_ago|duration }}
 {% endfor %}
+
+</div>
 {% endblock %}

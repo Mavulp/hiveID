@@ -2,70 +2,78 @@
 
 {% block title %}Invites - {% endblock %}
 
-{% block header %}
-<style>
-.ok { background-color: #a9ffa9; }
-.bad { background-color: #ffa9a9; }
-.pending { background-color: #ffffa9; }
-#removed, #added { display: none; }
-#removed:target, #added:target { display: block !important; }
-fieldset { display: inline-block; }
-</style>
-{% endblock %}
-
 {% block content %}
-<h2>Create new invite</h2>
-<p>Create a new invite link which can be used to register an account.
-<form action="/admin/invite/create" method="post">
-<input type="submit" value="Create invite" />
-</form>
+<div class="route-invites">
+    <div class="container-large">
+        <h1>Invites</h1>
+        <p>Create and manage links which are used to register new accounts.</p>
+        <div class="key-title" style="gap:20px">
+            <h4 style="margin-bottom:0;">All Invites</h4>
+            <form action="/admin/invite/create" method="post">
+                <button class="small" type="submit">New Invite</button>
+            </form>
+        </div>
 
-<h2>All invites</h2>
-<p>A list of all pending and consumed invites. A <span class="ok">green</span> background means the link has been consumed, while a <span class="pending">yellow</span> background means it has yet to been activated.
-<p><span class="pending">Pending</span> invites can be revoked.
-<table class="invite-list">
-<tr>
-<th>Link
-<th>Created by
-<th>Created at
-<th>Used by
-<th>Used at
-<th>Revoke
-
-{% for link in links %}
-<tr>
-    {% if let Some(_) = link.used_by %}
-<td class="ok"><a href="/register?invite={{ link.key }}">{{ link.key }}</a>
-    {% else %}
-<td class="pending"><a href="/register?invite={{ link.key }}">{{ link.key }}</a>
-    {% endif %}
-<td>{{ link.created_by }}
-<td>{{ link.created_ago|duration }}
-<td>
-{% if let Some(used_by) = link.used_by %}
-    {{ used_by }}
-{% endif %}
-<td>
-{% if let Some(used_ago) = link.used_ago %}
-    {{ used_ago|duration }}
-{% endif %}
-    {% if let None = link.used_by %}
-<td>
-<form action="/admin/invite/delete" method="post">
-<input type="hidden" name="key" value="{{ link.key }}" />
-<input type="submit" value="Revoke" />
-</form>
-    {% else %}
-<td class="hatch">
-    {% endif %}
-{% endfor %}
-</table>
-
-{% match error %}
-{% when Some with (error) %}
-<p class="error">{{ error }}
-{% when None %}
-<p id="removed" class="success">Deleted invite link!
-<p id="added" class="success">Created invite link!
-{% endmatch %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Link</th>
+                    <th>Created By</th>
+                    <th>Created At</th>
+                    <th>Used By</th>
+                    <th>Used At</th>
+                    <th>Revoke</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for link in links %}
+                    <tr>   
+                        <td>
+                            {% if let Some(_) = link.used_by %}
+                            <span class="status used">Used</span>
+                            {% else %}
+                            <span class="status pending">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if let Some(_) = link.used_by %}
+                            <a href="/register?invite={{ link.key }}">{{ link.key }}</a>
+                            {% else %}
+                            <a href="/register?invite={{ link.key }}">{{ link.key }}</a>
+                            {% endif %}
+                        </td>
+                        <td>{{ link.created_by }}</td>
+                        <td>{{ link.created_ago|duration }}</td>
+                        <td>
+                            {% if let Some(used_by) = link.used_by %}
+                            {{ used_by }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if let Some(used_ago) = link.used_ago %}
+                            {{ used_ago|duration }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if let None = link.used_by %}
+                            <form action="/admin/invite/delete" method="post">
+                                <input type="hidden" name="key" value="{{ link.key }}" />
+                                <button type="submit" class="small">Revoke</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% match error %}
+        {% when Some with (error) %}
+        <p class="error">{{ error }}
+        {% when None %}
+        <!-- <p id="removed" class="success">Deleted invite link!</p>
+        <p id="added" class="success">Created invite link!</p> -->
+        {% endmatch %}
+    </div>
+</div>
 {% endblock %}
