@@ -22,6 +22,7 @@
 .wrapper.equal {
   display: grid;
   gap: 20px;
+  align-items: center;
   grid-template-columns: 1fr 1fr;
 }
 
