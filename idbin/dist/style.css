@@ -5,6 +5,7 @@
 @import url("./style/login.css");
 @import url("./style/services.css");
 @import url("./style/table.css");
+@import url("./style/log.css");
 
 @font-face {
   font-family: "Rubik";
@@ -200,6 +201,7 @@ p {
 main {
   padding-top: var(--top-padding);
   position: relative;
+  padding-bottom: var(--top-padding);
 }
 
 .container-small,

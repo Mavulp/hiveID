@@ -2,29 +2,32 @@
 
 {% block title %}Audit log - {% endblock %}
 
-{% block header %}
-<style>
-.ok { background-color: #a9ffa9; }
-.bad { background-color: #ffa9a9; }
-</style>
-{% endblock %}
+{% block header %}{% endblock %}
 
 {% block content %}
-<div class="container-large" style="padding-bottom:80px;">
-<h1>Audit logs</h2>
-<p>Logs of all actions against the account database.
-<table class="audit-logs">
-<tr>
-<th>Action
-<th>User
-<th>Time
+<div class="route-log">
+  <div class="container-large">
+    <h1>Audit Logs</h1>
+    <p>Logs of all actions against the account database.</p>
 
-{% for action in actions %}
-<tr>
-<td>{{ action.action|safe }}
-<td>{{ action.performed_by }}
-<td>{{ action.time_ago|duration }}
-{% endfor %}
-
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>User</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for action in actions %}
+        <tr>
+          <td>{{ action.action|safe }}</td>
+          <td>{{ action.performed_by }}</td>
+          <td>{{ action.time_ago|duration }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

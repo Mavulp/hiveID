@@ -1,0 +1,49 @@
+.route-log table ul {
+  padding: 10px 20px 10px;
+}
+
+.route-log table ul .bad {
+  background-color: rgb(248, 179, 170);
+}
+
+.route-log table ul .ok {
+  background-color: #bbf3bb;
+}
+
+.route-log table ul .bad:before {
+  content: '-';
+}
+
+.route-log table ul .ok:before {
+  content: '+';
+}
+
+.route-log table ul .bad:before,
+.route-log table ul .ok:before {
+  font-weight: 400;
+  padding-right: 4px;
+  font-size: 1rem;
+}
+
+.route-log table ul .ok,
+.route-log table ul .bad {
+  display: inline-block;
+  color: var(--color-text);
+  padding: 0 5px;
+  border-radius: 3px;
+  height: 24px;
+  line-height: 24px;
+  margin-left: 5px;
+  margin-top: 5px;
+}
+
+.route-log table ul .user {
+  font-weight: 600;
+}
+
+.route-log table td:not(:first-child),
+.route-log table th:not(:first-child) {
+  min-width: 80px;
+  max-width: 156px;
+  white-space: nowrap;
+}
