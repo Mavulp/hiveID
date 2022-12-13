@@ -63,7 +63,7 @@ impl Display for AuditAction {
                 writeln!(f, "Changed user permissions:")?;
                 for change in changes {
                     write!(f, "<ul>")?;
-                    write!(f, "<li class=\"user\">{:?}</li>", change.username)?;
+                    write!(f, "<li class=\"user\">{}</li>", change.username)?;
 
                     for removed in &change.removed {
                         write!(f, "<li class=\"bad\">{}</li>", removed)?;
