@@ -62,13 +62,14 @@ impl Display for AuditAction {
             AuditAction::PermissionChange(changes) => {
                 writeln!(f, "Changed user permissions:")?;
                 for change in changes {
-                    write!(f, "<ul>{:?}", change.username)?;
+                    write!(f, "<ul>")?;
+                    write!(f, "<li class=\"user\">{}</li>", change.username)?;
 
                     for removed in &change.removed {
-                        write!(f, "<ul class=\"bad\">{}</ul>", removed)?;
+                        write!(f, "<li class=\"bad\">{}</li>", removed)?;
                     }
                     for added in &change.added {
-                        write!(f, "<ul class=\"ok\">{}</ul>", added)?;
+                        write!(f, "<li class=\"ok\">{}</li>", added)?;
                     }
 
                     write!(f, "</ul>")?;
