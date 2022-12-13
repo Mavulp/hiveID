@@ -105,7 +105,7 @@ input[type=checkbox] {
 .permissions-apply table td.change-bad,
 .permissions-apply table td.change-ok {
   /* content: ""; */
-  padding-left: 40px;
+  padding-left: 36px;
   position: relative;
 }
 
@@ -119,7 +119,7 @@ input[type=checkbox] {
   transform: translateY(-50%);
   width: 16px;
   height: 16px;
-  line-height: 16px;
+  line-height: 12px;
   text-align: center;
   font-weight: 700;
   font-size: 1rem;
@@ -147,10 +147,10 @@ input[type=checkbox] {
   content: "";
   border-radius: 50%;
   /* display: block; */
-  width: 16px;
-  height: 16px;
+  width: 8px;
+  height: 8px;
   position: absolute;
-  left: 10px;
+  left: 5px;
   top: 50%;
   transform: translateY(-50%);
 }
