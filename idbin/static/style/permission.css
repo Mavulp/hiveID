@@ -105,7 +105,7 @@ input[type=checkbox] {
 .permissions-apply table td.change-bad,
 .permissions-apply table td.change-ok {
   /* content: ""; */
-  padding-left: 20px;
+  padding-left: 40px;
   position: relative;
 }
 
@@ -114,40 +114,52 @@ input[type=checkbox] {
   content: "";
   display: block;
   position: absolute;
-  left: 0;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 12px;
-  height: 12px;
-  line-height: 12px;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
   text-align: center;
   font-weight: 700;
   font-size: 1rem;
   border-radius: 3px;
+  color: var(--color-text);
 }
 
 .permissions-apply table td.change-bad:before {
   content: "-";
+  background-color: rgb(248, 179, 170);
 }
 
 .permissions-apply table td.change-ok:before {
   content: "+";
+  background-color: #bbf3bb;
 }
 
-/* .permissions-list table td.ok,
+.permissions-list table td.ok,
 .permissions-list table td.bad {
   position: relative;
-} */
+}
 
 .permissions-list table td.ok:before,
 .permissions-list table td.bad:before {
   content: "";
   border-radius: 50%;
-  display: inline-block;
-  /* position: absolute; */
-  /* left: 0; */
-  /* top: 50%; */
-  /* transform: translateY(-50%); */
-  width: 12px;
-  height: 12px;
+  /* display: block; */
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.permissions-list table td.ok:before {
+  background-color: #71e071;
+
+}
+
+.permissions-list table td.bad:before {
+  background-color: rgb(230, 126, 113);
 }
