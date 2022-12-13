@@ -66,13 +66,15 @@ async fn get_all_roles(db: &Connection) -> anyhow::Result<Vec<ServiceRoles>> {
                 .push(name);
         }
 
-        let service_roles = service_roles
+        let mut service_roles = service_roles
             .into_iter()
             .map(|(k, v)| ServiceRoles {
                 service_name: k,
                 roles: v,
             })
             .collect::<Vec<ServiceRoles>>();
+
+        service_roles.sort_unstable_by(|a, b| a.service_name.cmp(&b.service_name));
 
         Ok(service_roles)
     })
@@ -111,10 +113,12 @@ async fn get_user_roles(db: &Connection) -> anyhow::Result<Vec<UserRoles>> {
             }
         }
 
-        let user_roles = user_roles
+        let mut user_roles = user_roles
             .into_iter()
             .map(|(k, v)| UserRoles { user: k, roles: v })
             .collect::<Vec<UserRoles>>();
+
+        user_roles.sort_unstable_by(|a, b| a.user.cmp(&b.user));
 
         Ok(user_roles)
     })
