@@ -6,6 +6,7 @@
 @import url("./style/services.css");
 @import url("./style/table.css");
 @import url("./style/log.css");
+@import url("./style/permission.css");
 
 @font-face {
   font-family: "Rubik";
@@ -204,6 +205,7 @@ main {
   padding-bottom: var(--top-padding);
 }
 
+.container-full,
 .container-small,
 .container-large {
   margin-left: clamp(40px,10vw, 180px);
@@ -213,6 +215,12 @@ main {
 
 .container-large {
   max-width: 824px;
+}
+
+.container-full {
+  width: 65vw;
+  max-width: unset;
+  max-width: 1920px;
 }
 
 hr {
