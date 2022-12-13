@@ -154,7 +154,7 @@
                 row.appendChild(c);
                 c = document.createElement("td");
                 c.innerText = changes[i].service + "/" + changes[i].role; 
-                c.classList.toggle(changes[i].value ? "ok" : "bad", true);
+                c.classList.toggle(changes[i].value ? "change-ok" : "change-bad", true);
                 row.appendChild(c);
     
                 let input = document.createElement("input");

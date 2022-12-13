@@ -101,3 +101,53 @@ input[type=checkbox] {
 .permissions-apply .changes-wrap {
   margin-bottom: 20px;
 }
+
+.permissions-apply table td.change-bad,
+.permissions-apply table td.change-ok {
+  /* content: ""; */
+  padding-left: 20px;
+  position: relative;
+}
+
+.permissions-apply table td.change-bad:before,
+.permissions-apply table td.change-ok:before {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  line-height: 12px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 3px;
+}
+
+.permissions-apply table td.change-bad:before {
+  content: "-";
+}
+
+.permissions-apply table td.change-ok:before {
+  content: "+";
+}
+
+/* .permissions-list table td.ok,
+.permissions-list table td.bad {
+  position: relative;
+} */
+
+.permissions-list table td.ok:before,
+.permissions-list table td.bad:before {
+  content: "";
+  border-radius: 50%;
+  display: inline-block;
+  /* position: absolute; */
+  /* left: 0; */
+  /* top: 50%; */
+  /* transform: translateY(-50%); */
+  width: 12px;
+  height: 12px;
+}
