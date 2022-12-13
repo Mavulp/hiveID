@@ -112,6 +112,11 @@ button[type=submit]:hover {
   color: #fff;
 }
 
+button:disabled {
+  filter: grayscale(1);
+  pointer-events: none !important;
+}
+
 
 input[type=file] {
   display: none;

@@ -93,3 +93,11 @@ input[type=checkbox] {
 .permissions-apply {
   padding-top: 40px;
 }
+
+.permissions-apply p {
+  margin-bottom: 15px;
+}
+
+.permissions-apply .changes-wrap {
+  margin-bottom: 20px;
+}

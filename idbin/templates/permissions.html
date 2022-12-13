@@ -63,19 +63,15 @@
       <div class="permissions-apply">
         <h2>Changes</h2>
         <p>Before applying, make sure you review all the changes.</p>
-        <br>
-        <!-- <button>Apply</button> -->
-
         <form action="/api/permissions" method="post">
-            <div id="changes">None</div>
+            <div id="changes" class="changes-wrap">None</div>
             <button id="apply" disabled type="submit">Apply</button>
         </form>
             
         {% match error %}
         {% when Some with (error) %}
-        <p class="error">{{ error }}
+          <p class="error">{{ error }}
         {% when None %}
-        <p id="success" class="success">Changes applied!
         {% endmatch %}
       </div>
     </div>
