@@ -85,7 +85,6 @@
   text-align: center;
 }
 
-
 input[type=checkbox] {
   accent-color: var(--color-accent);
 }
@@ -135,6 +134,10 @@ input[type=checkbox] {
 .permissions-apply table td.change-ok:before {
   content: "+";
   background-color: #bbf3bb;
+}
+
+.permissions-apply table tr td:last-child {
+  border-right: none;
 }
 
 .permissions-list table td.ok,
