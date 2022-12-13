@@ -2,160 +2,177 @@
 
 {% block title %}Permissions - {% endblock %}
 
-{% block header %}
-<style>
-.ok { background-color: #a9ffa9; }
-.bad { background-color: #ffa9a9; }
-#success { display: none; }
-#success:target { display: block !important; }
-</style>
-{% endblock %}
+{% block header %}{% endblock %}
 
 {% block content %}
-<div class="container-large"  style="padding-bottom:80px;">
-<h1>Permissions</h1>
-<p>Manage permissions for all Hivecom users.
+<div class="route-permissions">
+    <div class="container-full">
+      <h1>Permissions</h1>
+      <p>Manage permissions for all registered Hivecom users.</p>
 
-<table class="permission-matrix">
-<tr> <!-- role service headers -->
-<th class="hatch">
-{% for s in service_roles %}
-<th colspan="{{ s.roles.len() }}">{{ s.service_name }}
-{% endfor %}
+      {% for s in service_roles %}
+      <div class="service-permissions">
+        <div class="permission-header">
+          <h4>{{ s.service_name }}</h4>
+          <p>{{ s.roles.len() }} permissions</p>
+        </div>
+        <table class="permissions-wrap">
+          <tr>
+            <td class="permissions-users">
+              <ul>
+                <!-- users -->
+                {% for u in user_roles %}
+                    <li>{{ u.user }}</li>
+                {% endfor %}
+              </ul>
+            </td>
+            <td class="permissions-list">
+              <table>
+                <thead>
+                  <tr>
+                    <!-- roles -->
+                    {% for role in s.roles %}
+                        <th>{{ role }}</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                    <!-- role checkboxes -->
+                    {% for u in user_roles %}
+                        <tr>
+                            {% for r in s.roles %}
+                                {% if u.roles.contains(r.as_str()) %}
+                                    <td><input id="{{ u.user }}+{{ s.service_name}}+{{ r }}" class="switch" checked type="checkbox" autocomplete=off /></td>
+                                {% else %}
+                                    <td><input id="{{ u.user }}+{{ s.service_name}}+{{ r }}" class="switch" type="checkbox" autocomplete=off /></td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </tr>
+        </table>
+      </div>
 
-<tr> <!-- role headers -->
-<th class="hatch">
-{% for s in service_roles %}
-    {% for role in s.roles %}
-<th>{{ role }}
-    {% endfor %}
-{% endfor %}
+      {% endfor %}
+    </div>
 
-{% for u in user_roles %}
-<tr>
-<th>{{ u.user }}
-    {% for s in service_roles %}
-        {% for r in s.roles %}
-            {% if u.roles.contains(r.as_str()) %}
-<td><input id="{{ u.user }}+{{ s.service_name}}+{{ r }}" class="switch" checked type="checkbox" autocomplete=off />
-            {% else %}
-<td><input id="{{ u.user }}+{{ s.service_name}}+{{ r }}" class="switch" type="checkbox" autocomplete=off />
-            {% endif %}
-        {% endfor %}
-    {% endfor %}
-{% endfor %}
-</table>
+    <div class="container-small">
+      <div class="permissions-apply">
+        <h2>Changes</h2>
+        <p>Before applying, make sure you review all the changes.</p>
+        <br>
+        <!-- <button>Apply</button> -->
 
-<br>
-<br>
-<br>
+        <form action="/api/permissions" method="post">
+            <div id="changes">None</div>
+            <button id="apply" disabled type="submit">Apply</button>
+        </form>
+            
+        {% match error %}
+        {% when Some with (error) %}
+        <p class="error">{{ error }}
+        {% when None %}
+        <p id="success" class="success">Changes applied!
+        {% endmatch %}
+      </div>
+    </div>
 
-<h2>Changes</h2>
-<p>List of changes to the permissions. These are the changes that will be applied when pressing the <i>Apply</i> button.
-<p>A <span class="bad">red</span> background means the role will be removed for the user, while a <span class="ok">green</span> indicates the role will be added.
-<form action="/api/permissions" method="post">
-<p id="changes">None
-<p><button id="apply" disabled>Apply</button>
-</form>
-
-{% match error %}
-{% when Some with (error) %}
-<p class="error">{{ error }}
-{% when None %}
-<p id="success" class="success">Changes applied!
-{% endmatch %}
+</div>
 
 <script>
-let checkboxes = document.getElementsByClassName("switch");
-let original_values = {};
-
-for (let i = 0; i < checkboxes.length; i++) {
-    let id = checkboxes[i].attributes["id"].value;
-    let checked = checkboxes[i].checked;
-    original_values[id] = checked;
-    checkboxes[i].addEventListener("change", e => {
-        let id = e.target.attributes["id"].value;
-        let orig = original_values[id];
-        let now = e.target.checked;
-        let parent = e.target.parentNode;
-
-        if (orig != now) {
-            if (now) {
-                parent.classList.toggle("ok", true);
-                parent.classList.toggle("bad", false);
-            } else {
-                parent.classList.toggle("ok", false);
-                parent.classList.toggle("bad", true);
-            }
-        } else {
-            parent.classList.remove("ok");
-            parent.classList.remove("bad");
-        }
-
-        updateSubmitForm();
-    });
-}
-
-function gatherChanges() {
-    let changes = [];
+    let checkboxes = document.querySelectorAll(".switch");
+    let original_values = {};
+    
     for (let i = 0; i < checkboxes.length; i++) {
         let id = checkboxes[i].attributes["id"].value;
         let checked = checkboxes[i].checked;
-        if (checked != original_values[id]) {
-            let split = id.split("+");
-            changes.push({ name: split[0], service: split[1], role: split[2], value: checked });
-        }
+        original_values[id] = checked;
+        
+        checkboxes[i].addEventListener("change", e => {
+            let id = e.target.attributes["id"].value;
+            let orig = original_values[id];
+            let now = e.target.checked;
+            let parent = e.target.parentNode;
+    
+            if (orig != now) {
+                if (now) {
+                    parent.classList.toggle("ok", true);
+                    parent.classList.toggle("bad", false);
+                } else {
+                    parent.classList.toggle("ok", false);
+                    parent.classList.toggle("bad", true);
+                }
+            } else {
+                parent.classList.remove("ok");
+                parent.classList.remove("bad");
+            }
+    
+            updateSubmitForm();
+        });
     }
+    
+    function gatherChanges() {
+        let changes = [];
+        for (let i = 0; i < checkboxes.length; i++) {
+            let id = checkboxes[i].attributes["id"].value;
+            let checked = checkboxes[i].checked;
+            if (checked != original_values[id]) {
 
-    return changes;
-}
-
-function updateSubmitForm() {
-    let button = document.getElementById("apply")
-    let container = document.getElementById("changes")
-    let changes = gatherChanges();
-
-    button.disabled = changes.length == 0;
-
-    if (changes.length == 0) {
-        container.innerText = "None";
-    } else {
-        let table = document.createElement("table");
-        table.classList.add("permission-matrix");
-        let row = document.createElement("tr");
-        let c = document.createElement("th");
-        c.innerText = "Name"
-        row.appendChild(c);
-        c = document.createElement("th");
-        c.innerText = "Change"
-        row.appendChild(c);
-
-        table.appendChild(row);
-
-        for (let i = 0; i < changes.length; i++) {
-            row = document.createElement("tr");
-            c = document.createElement("td");
-            c.innerText = changes[i].name; 
+                let [name, service, role] = id.split("+");
+                changes.push({ name, service, role, value: checked });
+            }
+        }
+    
+        return changes;
+    }
+    
+    function updateSubmitForm() {
+        let button = document.getElementById("apply")
+        let container = document.getElementById("changes")
+        let changes = gatherChanges();
+    
+        button.disabled = changes.length == 0;
+    
+        if (changes.length == 0) {
+            container.innerText = "None";
+        } else {
+            let table = document.createElement("table");
+            table.classList.add("permission-matrix");
+            let row = document.createElement("tr");
+            let c = document.createElement("th");
+            c.innerText = "Name"
             row.appendChild(c);
-            c = document.createElement("td");
-            c.innerText = changes[i].service + "/" + changes[i].role; 
-            c.classList.toggle(changes[i].value ? "ok" : "bad", true);
+            c = document.createElement("th");
+            c.innerText = "Change"
             row.appendChild(c);
-
-            let input = document.createElement("input");
-            input.type = "hidden";
-            input.name = changes[i].name + "+" + changes[i].service + "+" + changes[i].role;
-            input.value = changes[i].value;
-
-            row.appendChild(input);
-
+    
             table.appendChild(row);
+    
+            for (let i = 0; i < changes.length; i++) {
+                row = document.createElement("tr");
+                c = document.createElement("td");
+                c.innerText = changes[i].name; 
+                row.appendChild(c);
+                c = document.createElement("td");
+                c.innerText = changes[i].service + "/" + changes[i].role; 
+                c.classList.toggle(changes[i].value ? "ok" : "bad", true);
+                row.appendChild(c);
+    
+                let input = document.createElement("input");
+                input.type = "hidden";
+                input.name = changes[i].name + "+" + changes[i].service + "+" + changes[i].role;
+                input.value = changes[i].value;
+    
+                row.appendChild(input);
+                table.appendChild(row);
+            }
+    
+            container.textContent = "";
+            container.appendChild(table);
         }
-
-        container.textContent = "";
-        container.appendChild(table);
     }
-}
 </script>
-</div>
 {% endblock %}
