@@ -61,13 +61,13 @@
             <div data-title="The icon which is displayed when logging into the service.">
               <input type="file" name="icon" accept="image/png" id="{{ service.name }}-icon" />
               <label for="{{ service.name }}-icon">Upload an Icon</label>
+              
+              <button class="normal" type="submit" style="margin-top:20px">Update</button>
             </div>
             {% if let Some(icon) = service.icon %}
             <img src="{{ icon }}" />
             {% endif %}
           </div>
-          
-          <button class="normal" type="submit">Update</button>
         </div>
       </form>
 
