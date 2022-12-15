@@ -39,8 +39,8 @@ pub fn api_route(
     secret_key: SecretKey,
     serve_dir: Option<PathBuf>,
     statuses: Statuses,
-) -> anyhow::Result<Router> {
-    let idp_refresh_address = env::var("IDP_REFRESH_ADDR")?;
+) -> Router {
+    let idp_refresh_address = env::var("IDP_REFRESH_ADDR").unwrap();
     let variables = Variables {
         idp_refresh_address,
         idp_login_address: String::from("/login"),
@@ -99,7 +99,7 @@ pub fn api_route(
         );
     }
 
-    Ok(router)
+    router
 }
 
 async fn handle_error(_err: std::io::Error) -> impl IntoResponse {
@@ -132,10 +132,10 @@ async fn health() -> Result<Response<BoxBody>, Error> {
     Ok(response)
 }
 
-async fn run() -> Result<(), anyhow::Error> {
+async fn run() {
     let db_path: PathBuf = env::var("DB_PATH").expect("DB_PATH not set").into();
     let serve_dir: Option<PathBuf> = env::var("SERVE_DIR").ok().map(|p| p.into());
-    let secret_key = SecretKey::from_env()?;
+    let secret_key = SecretKey::from_env().unwrap();
 
     let bind_addr: SocketAddr = env::var("BIND_ADDRESS")
         .expect("BIND_ADDRESS not set")
@@ -160,7 +160,7 @@ async fn run() -> Result<(), anyhow::Error> {
         secret_key,
         serve_dir,
         statuses.clone(),
-    )?);
+    ));
 
     tokio::spawn(async move {
         status_poll_loop(conn, statuses).await;
@@ -171,8 +171,6 @@ async fn run() -> Result<(), anyhow::Error> {
         .serve(router.into_make_service())
         .await
         .unwrap();
-
-    Ok(())
 }
 
 fn main() {
@@ -183,5 +181,5 @@ fn main() {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(async { run().await.unwrap() })
+        .block_on(async { run().await })
 }
