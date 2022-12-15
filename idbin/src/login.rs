@@ -172,7 +172,7 @@ pub(crate) async fn post_login_impl(
 
     let response = Response::builder()
         .header("Location", url.as_str())
-        .status(StatusCode::SEE_OTHER)
+        .status(StatusCode::FOUND)
         .body(boxed(Empty::new()))
         .unwrap();
 
