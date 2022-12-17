@@ -9,7 +9,7 @@ anyhow = "1.0.57"
 axum = { version = "0.6", features = ["http1", "query", "headers", "ws", "macros"] }
 bytes = "1.1.0"
 futures = "0.3.21"
-log = "0.4.17"
+tracing = "0.1.37"
 tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "sync", "net", "io-util"] }
 serde = { version = "1.0.137", features = ["derive"] }
 serde_json = "1.0.81"

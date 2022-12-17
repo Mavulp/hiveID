@@ -18,7 +18,7 @@ use axum::{
 };
 use futures::Future;
 use jwt::VerifyWithKey;
-use log::{debug, warn};
+use tracing::{debug, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
