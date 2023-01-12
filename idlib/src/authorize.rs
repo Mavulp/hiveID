@@ -10,18 +10,19 @@ use axum::{
     body::{boxed, Empty},
     extract::{
         rejection::{ExtensionRejection, TypedHeaderRejection},
-        FromRequestParts,
+        FromRequest, FromRequestParts,
     },
+    headers::{authorization::Bearer, Authorization},
     http::{header::SET_COOKIE, request::Parts, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
-    Extension, Json,
+    Extension, Json, TypedHeader,
 };
 use futures::Future;
 use jwt::VerifyWithKey;
-use tracing::{debug, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
+use tracing::{debug, error, warn};
 
 use crate::{
     create_auth_cookie, Cookies, IdpClient, RefreshTokenRequest, RefreshTokenResponse, SecretKey,
@@ -140,6 +141,30 @@ pub enum AuthorizationRejection {
     Generic(#[from] anyhow::Error),
 }
 
+async fn get_token<B: Send + Sync>(req: &mut Parts, state: &B) -> Option<String> {
+    let Cookies(jar) = match Cookies::from_request_parts(req, state).await.ok() {
+        Some(jar) => jar,
+        None => {
+            error!("Failed to get cookie jar");
+            return None;
+        }
+    };
+
+    if let Some(token) = jar.get("__auth") {
+        debug!("Found auth cookie");
+        return Some(token.value().to_owned());
+    }
+
+    let token = TypedHeader::<Authorization<Bearer>>::from_request_parts(req, state)
+        .await
+        .map(|h| h.0 .0.token().to_owned())
+        .ok()?;
+
+    debug!("Found auth header");
+
+    Some(token)
+}
+
 #[async_trait]
 impl<B, R: Rule> FromRequestParts<B> for AuthorizeCookie<R>
 where
@@ -148,30 +173,24 @@ where
     type Rejection = AuthorizationRejection;
 
     async fn from_request_parts(req: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
-        let Cookies(jar) = Cookies::from_request_parts(req, state).await.unwrap();
-
         let Extension(variables) =
             Extension::<Arc<Variables>>::from_request_parts(req, state).await?;
 
-        let token = match jar.get("__auth") {
-            Some(token) => token,
-            None => {
-                debug!("Failed to find auth cookie. Redirecting to IDP");
+        let Some(token) = get_token(req, state).await else {
+            debug!("Failed to find auth token. Redirecting to IDP");
 
-                let redirect = format!(
-                    "{}?service={}&redirect_to={}",
-                    variables.idp_login_address,
-                    variables.service_name,
-                    urlencoding::encode(req.uri.path())
-                );
+            let redirect = format!(
+                "{}?service={}&redirect_to={}",
+                variables.idp_login_address,
+                variables.service_name,
+                urlencoding::encode(req.uri.path())
+            );
 
-                return Err(AuthorizationRejection::MissingAuth(redirect));
-            }
+            return Err(AuthorizationRejection::MissingAuth(redirect));
         };
 
         let Extension(secret) = Extension::<SecretKey>::from_request_parts(req, state).await?;
         let payload: Payload = token
-            .value()
             .verify_with_key(&*secret.0)
             .context("Failed to parse JWT")?;
 
@@ -185,7 +204,7 @@ where
             let Extension(idp_client) =
                 Extension::<IdpClient>::from_request_parts(req, state).await?;
 
-            match try_refresh_token(&variables, idp_client, token.value().to_string()).await {
+            match try_refresh_token(&variables, idp_client, token).await {
                 Ok(token) => {
                     debug!("Refreshed token");
 
@@ -222,7 +241,7 @@ where
             }
         }
 
-        debug!("Got auth cookie for {:?}", payload.name);
+        debug!("Authorized as \"{}\"", payload.name);
 
         Ok(AuthorizeCookie(
             payload,
