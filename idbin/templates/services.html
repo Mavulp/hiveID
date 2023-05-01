@@ -23,6 +23,11 @@
 
     <h4>Services</h4>
 
+    <div class="input-item">
+      <label for="service">Search</label>
+      <input type="text" placeholder="Find a service..." name="search" id="search">
+    </div>
+
     {% for service in services %}
     <div class="form-wrapper" id="{{ service.name }}">
       <form action="/admin/services" method="post" enctype="multipart/form-data">
@@ -115,4 +120,41 @@
     {% endfor %}
   </div>
 </div>
+<script>
+const input = document.querySelector('#search')
+
+input.addEventListener('input', (event) => {
+  const searchValue = event.target.value
+
+  if (!searchValue || searchValue?.length === 0) {
+    showAll()
+  } else {
+    nodeMap('.form-wrapper', (node) => {
+      if(!searchInStr(node.id, searchValue)) {
+        node.style.display = 'none'
+      } else {
+        node.style.display = 'block'
+      }
+    })
+  }
+})
+
+export function searchInStr(match, input) {
+  if (!match)
+    return false
+  const split = input.trim().split(/[\s-]+/)
+  return split.every(s => match.toLowerCase().includes(s.toLowerCase()))
+}
+
+function nodeMap(identifier, fn) {
+  const nodes = document.querySelectorAll(identifier)
+  for (const node of nodes) {
+    fn(node)
+  }
+}
+
+function showAll() {
+  nodeMap('.form-wrapper', (node) => node.style.display = 'block')
+}
+</script>
 {% endblock %}
