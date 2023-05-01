@@ -2,7 +2,7 @@
   display: block;
   width: 100%;
   position: relative;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
 .input-item [data-title]:before {
