@@ -10,7 +10,7 @@
 
     <!-- Create a service -->
     <h4>Add a service</h4>
-    <form class="form-wrapper create-service" action="/admin/services/create" method="post">
+    <form class="form-wrapper create-service " action="/admin/services/create" method="post">
       <div class="form-wrapper-box">
         <div class="input-item">
           <label for="service">Name</label>
@@ -29,7 +29,7 @@
     </div>
 
     {% for service in services %}
-    <div class="form-wrapper" id="{{ service.name }}">
+    <div class="form-wrapper search-item" id="{{ service.name }}">
       <form action="/admin/services" method="post" enctype="multipart/form-data">
         <input type="hidden" name="name" value="{{ service.name }}" />
 
@@ -129,7 +129,7 @@ input.addEventListener('input', (event) => {
   if (!searchValue || searchValue?.length === 0) {
     showAll()
   } else {
-    nodeMap('.form-wrapper', (node) => {
+    nodeMap('.search-item', (node) => {
       if(!searchInStr(node.id, searchValue)) {
         node.style.display = 'none'
       } else {
@@ -139,7 +139,7 @@ input.addEventListener('input', (event) => {
   }
 })
 
-export function searchInStr(match, input) {
+function searchInStr(match, input) {
   if (!match)
     return false
   const split = input.trim().split(/[\s-]+/)
@@ -154,7 +154,7 @@ function nodeMap(identifier, fn) {
 }
 
 function showAll() {
-  nodeMap('.form-wrapper', (node) => node.style.display = 'block')
+  nodeMap('.search-item', (node) => node.style.display = 'block')
 }
 </script>
 {% endblock %}

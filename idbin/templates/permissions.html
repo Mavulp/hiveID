@@ -10,8 +10,13 @@
       <h1>Permissions</h1>
       <p>Manage permissions for all registered Hivecom users.</p>
 
+      <div class="input-item">
+        <label for="service">Search</label>
+        <input type="text" placeholder="Find a service..." name="search" id="search">
+      </div>
+
       {% for s in service_roles %}
-      <div class="service-permissions">
+      <div class="service-permissions" id="{{ s.service_name }}">
         <div class="permission-header">
           <h4>{{ s.service_name }}</h4>
           <p>{{ s.roles.len() }} permissions</p>
@@ -77,6 +82,43 @@
     </div>
 
 </div>
+<script>
+  const input = document.querySelector('#search')
+  
+  input.addEventListener('input', (event) => {
+    const searchValue = event.target.value
+  
+    if (!searchValue || searchValue?.length === 0) {
+      showAll()
+    } else {
+      nodeMap('.service-permissions', (node) => {
+        if(!searchInStr(node.id, searchValue)) {
+          node.style.display = 'none'
+        } else {
+          node.style.display = 'block'
+        }
+      })
+    }
+  })
+  
+  function searchInStr(match, input) {
+    if (!match)
+      return false
+    const split = input.trim().split(/[\s-]+/)
+    return split.every(s => match.toLowerCase().includes(s.toLowerCase()))
+  }
+  
+  function nodeMap(identifier, fn) {
+    const nodes = document.querySelectorAll(identifier)
+    for (const node of nodes) {
+      fn(node)
+    }
+  }
+  
+  function showAll() {
+    nodeMap('.service-permissions', (node) => node.style.display = 'block')
+  }
+</script>
 
 <script>
     let checkboxes = document.querySelectorAll(".switch");
