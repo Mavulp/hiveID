@@ -16,11 +16,12 @@
   align-items: center;
 }
 
-.service-item h3 {
+.service-item h2 {
   color: var(--color-text);
   text-decoration: none;
   margin-bottom: 10px;
   width: 100%;
+  font-size: 1.4rem;
 }
 
 .service-item p {
