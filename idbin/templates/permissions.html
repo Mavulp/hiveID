@@ -83,41 +83,37 @@
 
 </div>
 <script>
-  const input = document.querySelector('#search')
-  
-  input.addEventListener('input', (event) => {
-    const searchValue = event.target.value
-  
-    if (!searchValue || searchValue?.length === 0) {
-      showAll()
-    } else {
-      nodeMap('.service-permissions', (node) => {
-        if(!searchInStr(node.id, searchValue)) {
-          node.style.display = 'none'
-        } else {
-          node.style.display = 'block'
-        }
-      })
-    }
-  })
-  
-  function searchInStr(match, input) {
-    if (!match)
-      return false
-    const split = input.trim().split(/[\s-]+/)
-    return split.every(s => match.toLowerCase().includes(s.toLowerCase()))
-  }
-  
-  function nodeMap(identifier, fn) {
-    const nodes = document.querySelectorAll(identifier)
-    for (const node of nodes) {
-      fn(node)
-    }
-  }
-  
-  function showAll() {
+const input = document.querySelector('#search')
+
+input.addEventListener('input', (event) => {
+  const searchValue = event.target.value
+
+  if (!searchValue || searchValue?.length === 0) {
     nodeMap('.service-permissions', (node) => node.style.display = 'block')
+  } else {
+    nodeMap('.service-permissions', (node) => {
+      if(!searchInStr(node.id, searchValue)) {
+        node.style.display = 'none'
+      } else {
+        node.style.display = 'block'
+      }
+    })
   }
+})
+
+function searchInStr(match, input) {
+  if (!match)
+    return false
+  const searchedWords = input.trim().split(/[\s-]+/)
+  return searchedWords.every(search => match.toLowerCase().includes(search.toLowerCase()))
+}
+
+function nodeMap(identifier, fn) {
+  const nodes = document.querySelectorAll(identifier)
+  for (const node of nodes) {
+    fn(node)
+  }
+}
 </script>
 
 <script>

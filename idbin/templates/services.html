@@ -127,7 +127,7 @@ input.addEventListener('input', (event) => {
   const searchValue = event.target.value
 
   if (!searchValue || searchValue?.length === 0) {
-    showAll()
+    nodeMap('.search-item', (node) => node.style.display = 'block')
   } else {
     nodeMap('.search-item', (node) => {
       if(!searchInStr(node.id, searchValue)) {
@@ -142,19 +142,15 @@ input.addEventListener('input', (event) => {
 function searchInStr(match, input) {
   if (!match)
     return false
-  const split = input.trim().split(/[\s-]+/)
-  return split.every(s => match.toLowerCase().includes(s.toLowerCase()))
+  const searchedWords = input.trim().split(/[\s-]+/)
+  return searchedWords.every(search => match.toLowerCase().includes(search.toLowerCase()))
 }
 
-function nodeMap(identifier, fn) {
-  const nodes = document.querySelectorAll(identifier)
+function nodeMap(nodeId, fn) {
+  const nodes = document.querySelectorAll(nodeId)
   for (const node of nodes) {
     fn(node)
   }
-}
-
-function showAll() {
-  nodeMap('.search-item', (node) => node.style.display = 'block')
 }
 </script>
 {% endblock %}
