@@ -10,7 +10,7 @@
 
     <!-- Create a service -->
     <h4>Add a service</h4>
-    <form class="form-wrapper create-service" action="/admin/services/create" method="post">
+    <form class="form-wrapper create-service " action="/admin/services/create" method="post">
       <div class="form-wrapper-box">
         <div class="input-item">
           <label for="service">Name</label>
@@ -23,8 +23,13 @@
 
     <h4>Services</h4>
 
+    <div class="input-item">
+      <label for="service">Search</label>
+      <input type="text" placeholder="Find a service..." name="search" id="search">
+    </div>
+
     {% for service in services %}
-    <div class="form-wrapper" id="{{ service.name }}">
+    <div class="form-wrapper search-item" id="{{ service.name }}">
       <form action="/admin/services" method="post" enctype="multipart/form-data">
         <input type="hidden" name="name" value="{{ service.name }}" />
 
@@ -115,4 +120,37 @@
     {% endfor %}
   </div>
 </div>
+<script>
+const input = document.querySelector('#search')
+
+input.addEventListener('input', (event) => {
+  const searchValue = event.target.value
+
+  if (!searchValue || searchValue?.length === 0) {
+    nodeMap('.search-item', (node) => node.style.display = 'block')
+  } else {
+    nodeMap('.search-item', (node) => {
+      if(!searchInStr(node.id, searchValue)) {
+        node.style.display = 'none'
+      } else {
+        node.style.display = 'block'
+      }
+    })
+  }
+})
+
+function searchInStr(match, input) {
+  if (!match)
+    return false
+  const searchedWords = input.trim().split(/[\s-]+/)
+  return searchedWords.every(search => match.toLowerCase().includes(search.toLowerCase()))
+}
+
+function nodeMap(nodeId, fn) {
+  const nodes = document.querySelectorAll(nodeId)
+  for (const node of nodes) {
+    fn(node)
+  }
+}
+</script>
 {% endblock %}

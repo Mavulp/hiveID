@@ -1,21 +1,27 @@
 .service-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
   list-style: none;
 }
 
 .service-item {
   border-radius: 10px;
   display: grid;
-  grid-template-columns: 116px 1fr 116px;
+  grid-template-columns: 116px 1fr;
   gap: 0;
   border: 1px solid var(--color-border);
   text-decoration: none;
   margin-bottom: 20px;
+  align-items: center;
 }
 
 .service-item h2 {
   color: var(--color-text);
   text-decoration: none;
   margin-bottom: 10px;
+  width: 100%;
+  font-size: 1.4rem;
 }
 
 .service-item p {
@@ -29,7 +35,6 @@
 
 .service-logo {
   width: 116px;
-  /* height: 116px; */
   height: 100%;
   min-height: 116px;
   position: relative;
@@ -38,6 +43,7 @@
 
 .service-logo img {
   position: absolute;
+  border-radius: 10px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -49,7 +55,10 @@
 }
 
 .service-content {
-  padding: 20px 30px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  padding: 15px 20px;
 }
 
 .service-item .service-status {
