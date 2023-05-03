@@ -9,7 +9,8 @@ use axum::{
     extract::Query,
     http::{Response, StatusCode},
     response::IntoResponse,
-    Extension, Form,
+    routing::{get, post},
+    Extension, Form, Router,
 };
 
 use idlib::{AuthorizeCookie, Payload};
@@ -22,6 +23,12 @@ use crate::{
     error::Error,
     into_response,
 };
+
+pub fn router() -> Router {
+    Router::new()
+        .route("/", get(page))
+        .route("/", post(post_page))
+}
 
 #[derive(Template)]
 #[template(path = "account.html")]

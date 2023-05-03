@@ -7,7 +7,8 @@ use axum::{
     extract::Query,
     http::{Response, StatusCode},
     response::IntoResponse,
-    Extension, Form,
+    routing::{get, post},
+    Extension, Form, Router,
 };
 
 use idlib::{AuthorizeCookie, Has};
@@ -23,6 +24,13 @@ use crate::{
     error::Error,
     into_response,
 };
+
+pub fn router() -> Router {
+    Router::new()
+        .route("/", get(page))
+        .route("/create", post(create_page))
+        .route("/delete", post(delete_page))
+}
 
 struct Link {
     key: String,

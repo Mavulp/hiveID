@@ -5,7 +5,8 @@ use axum::{
     extract::Multipart,
     http::{Response, StatusCode},
     response::IntoResponse,
-    Extension, Form,
+    routing::{get, post},
+    Extension, Form, Router,
 };
 
 use futures::Future;
@@ -19,6 +20,16 @@ use serde_rusqlite::{from_row, from_rows};
 use tokio_rusqlite::Connection;
 
 use crate::{audit, error::Error, into_response};
+
+pub fn router() -> Router {
+    Router::new()
+        .route("/", get(page))
+        .route("/", post(post_update_service))
+        .route("/create", post(post_create_service))
+        .route("/secret/generate", post(post_generate_secret))
+        .route("/roles", post(post_create_new_role))
+        .route("/roles/delete", post(post_delete_role))
+}
 
 fn redirect_result(result: Result<(), Error>, id: Option<&str>) -> impl IntoResponse {
     let id = id.unwrap_or("top");

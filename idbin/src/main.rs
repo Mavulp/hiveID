@@ -54,33 +54,12 @@ pub fn api_route(
         .route("/", get(home::page))
         .route("/login", get(login::page))
         .route("/refresh", post(refresh::post_refresh_token))
-        .route("/register", get(register::page))
-        .route("/register", post(register::post_page))
-        .route("/account", get(account::page))
-        .route("/account", post(account::post_page))
-        .route("/admin/services", get(services::page))
-        .route("/admin/services", post(services::post_update_service))
-        .route(
-            "/admin/services/create",
-            post(services::post_create_service),
-        )
-        .route(
-            "/admin/services/secret/generate",
-            post(services::post_generate_secret),
-        )
-        .route(
-            "/admin/services/roles",
-            post(services::post_create_new_role),
-        )
-        .route(
-            "/admin/services/roles/delete",
-            post(services::post_delete_role),
-        )
+        .nest("/register", register::router())
+        .nest("/account", account::router())
+        .nest("/admin/services", services::router())
+        .nest("/admin/invite", invite::router())
         .route("/admin/permissions", get(permissions::page))
         .route("/admin/audit", get(audit::page))
-        .route("/admin/invite", get(invite::page))
-        .route("/admin/invite/create", post(invite::create_page))
-        .route("/admin/invite/delete", post(invite::delete_page))
         .route("/api/health", get(health))
         .route("/api/login", post(login::post_login))
         .route("/api/permissions", post(permissions::post_permissions))

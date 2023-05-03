@@ -10,7 +10,8 @@ use axum::{
     body::{boxed, BoxBody, Empty},
     extract::Query,
     http::{Response, StatusCode},
-    Extension, Form,
+    routing::{get, post},
+    Extension, Form, Router,
 };
 
 use log::{debug, warn};
@@ -22,6 +23,12 @@ use crate::{
     error::Error,
     into_response, Connection,
 };
+
+pub fn router() -> Router {
+    Router::new()
+        .route("/", get(page))
+        .route("/", post(post_page))
+}
 
 #[derive(Template)]
 #[template(path = "register.html")]
