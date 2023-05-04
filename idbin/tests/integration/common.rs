@@ -58,7 +58,7 @@ impl TestServer {
 
         req.call().or_any_status()
     }
-    
+
     pub fn put<J: Into<Option<serde_json::Value>>>(
         &self,
         path: &str,
