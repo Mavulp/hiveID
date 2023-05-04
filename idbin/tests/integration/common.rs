@@ -49,6 +49,16 @@ impl TestServer {
         Ok(())
     }
 
+    pub fn delete(&self, path: &str) -> Result<ureq::Response, ureq::Transport> {
+        let mut req = ureq::delete(&format!("{}{}", self.addr, path));
+
+        if let Some(token) = &self.auth_token {
+            req = req.set("Authorization", &format!("Bearer {token}"));
+        }
+
+        req.call().or_any_status()
+    }
+
     pub fn get(&self, path: &str) -> Result<ureq::Response, ureq::Transport> {
         let mut req = ureq::get(&format!("{}{}", self.addr, path));
 

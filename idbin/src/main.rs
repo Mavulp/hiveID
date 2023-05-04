@@ -8,11 +8,11 @@ use axum::{
 };
 use error::Error;
 use idlib::{IdpClient, SecretKey, Variables};
+use log::warn;
 use rusqlite_migration::{Migrations, M};
 use status::{status_poll_loop, Statuses};
 use tokio::sync::RwLock;
 use tower_http::services::ServeDir;
-use tracing::warn;
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
@@ -44,7 +44,7 @@ where
 {
     let err = err.to_string();
 
-    warn!("{}", err);
+    warn!("{:?}", err);
 
     (StatusCode::INTERNAL_SERVER_ERROR, err)
 }

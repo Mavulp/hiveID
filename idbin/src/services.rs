@@ -26,7 +26,7 @@ pub fn api_route() -> Router {
         .route("/", post(create_service_v2))
         .route("/:id/secret", post(generate_service_secret))
         .route("/:id/role", post(create_new_role_v2))
-        .route("/:id/role", delete(delete_role_v2))
+        .route("/:id/role/:role", delete(delete_role_v2))
 }
 
 /// Information about a service.
@@ -150,6 +150,13 @@ pub(crate) async fn create_service_v2(
     Extension(db): Extension<Connection>,
     Json(create): Json<CreateService>,
 ) -> Result<(), (StatusCode, String)> {
+    if create.id.len() == 0 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Cannot create service with empty ID".into(),
+        ));
+    }
+
     create_new_service(db, create.id, payload.name)
         .await
         .map_err(internal_error)?;
@@ -256,8 +263,7 @@ pub(crate) async fn create_new_role_v2(
 )]
 pub(crate) async fn delete_role_v2(
     Jwt(payload, ..): AdminJwt,
-    Path(id): Path<String>,
-    Path(role): Path<String>,
+    Path((id, role)): Path<(String, String)>,
     Extension(db): Extension<Connection>,
 ) -> Result<(), (StatusCode, String)> {
     delete_role(db, id, role, payload.name)
