@@ -9,7 +9,8 @@ use async_trait::async_trait;
 use axum::{
     body::{boxed, Empty},
     extract::{
-        rejection::{ExtensionRejection, TypedHeaderRejection}, FromRequestParts,
+        rejection::{ExtensionRejection, TypedHeaderRejection},
+        FromRequestParts,
     },
     headers::{authorization::Bearer, Authorization},
     http::{header::SET_COOKIE, request::Parts, HeaderValue, StatusCode},

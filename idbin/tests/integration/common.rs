@@ -1,15 +1,13 @@
-
 use assert_cmd::prelude::*;
 
-
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use temp_dir::TempDir;
 use ureq::OrAnyStatus;
 
 pub struct TestServer {
     addr: String,
     auth_token: Option<String>,
-    temp_dir: TempDir,
+    _temp_dir: TempDir,
     server: Child,
 }
 
@@ -60,12 +58,48 @@ impl TestServer {
 
         req.call().or_any_status()
     }
+    
+    pub fn put<J: Into<Option<serde_json::Value>>>(
+        &self,
+        path: &str,
+        json: J,
+    ) -> Result<ureq::Response, ureq::Transport> {
+        let mut req = ureq::put(&format!("{}{}", self.addr, path));
+
+        if let Some(token) = &self.auth_token {
+            req = req.set("Authorization", &format!("Bearer {token}"));
+        }
+
+        if let Some(json) = json.into() {
+            req.send_json(json).or_any_status()
+        } else {
+            req.call().or_any_status()
+        }
+    }
+
+    pub fn post<J: Into<Option<serde_json::Value>>>(
+        &self,
+        path: &str,
+        json: J,
+    ) -> Result<ureq::Response, ureq::Transport> {
+        let mut req = ureq::post(&format!("{}{}", self.addr, path));
+
+        if let Some(token) = &self.auth_token {
+            req = req.set("Authorization", &format!("Bearer {token}"));
+        }
+
+        if let Some(json) = json.into() {
+            req.send_json(json).or_any_status()
+        } else {
+            req.call().or_any_status()
+        }
+    }
 }
 
 impl Drop for TestServer {
     fn drop(&mut self) {
         self.server.kill().unwrap();
-        self.server.wait();
+        self.server.wait().unwrap();
     }
 }
 
@@ -76,12 +110,25 @@ fn spawn_idbin() -> TestServer {
     let addr = format!("127.0.0.1:{port}");
 
     let mut cmd = Command::cargo_bin("idbin").unwrap();
+    cmd.env("RUST_LOG", "debug");
     cmd.env("DB_PATH", d.child("db.sqlite"));
     cmd.env("BIND_ADDRESS", &addr);
     cmd.env("IDP_SECRET_KEY", "aHVudGVyMg==");
     cmd.env("IDP_REFRESH_ADDR", format!("http://{addr}/refresh"));
+    cmd.stdout(Stdio::piped());
 
-    let output = cmd.spawn().unwrap();
+    let mut output = cmd.spawn().unwrap();
+    let stdout = output.stdout.take().unwrap();
+    std::thread::spawn(move || {
+        use std::io::BufRead;
+        let mut reader = std::io::BufReader::new(stdout);
+        let mut line = String::new();
+        loop {
+            reader.read_line(&mut line).unwrap();
+            print!("{line}");
+            line.clear();
+        }
+    });
 
     let addr = format!("http://127.0.0.1:{port}");
 
@@ -100,7 +147,7 @@ fn spawn_idbin() -> TestServer {
     TestServer {
         addr,
         auth_token: None,
-        temp_dir: d,
+        _temp_dir: d,
         server: output,
     }
 }
