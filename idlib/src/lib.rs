@@ -5,7 +5,7 @@ use hmac::{digest::InvalidLength, Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::{
-    env::{self, VarError},
+    env::{self},
     num::ParseIntError,
     sync::Arc,
 };

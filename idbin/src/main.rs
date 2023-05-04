@@ -1,5 +1,3 @@
-use std::{env, net::SocketAddr, path::PathBuf, sync::Arc};
-
 use askama::Template;
 use axum::{
     body::{self, boxed, BoxBody, Empty, Full},
@@ -10,12 +8,18 @@ use axum::{
 };
 use error::Error;
 use idlib::{IdpClient, SecretKey, Variables};
-
 use rusqlite_migration::{Migrations, M};
-
 use status::{status_poll_loop, Statuses};
 use tokio::sync::RwLock;
 use tower_http::services::ServeDir;
+use tracing::warn;
+use utoipa::{
+    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+    Modify, OpenApi,
+};
+use utoipa_swagger_ui::SwaggerUi;
+
+use std::{env, net::SocketAddr, path::PathBuf, sync::Arc};
 
 mod account;
 mod audit;
@@ -33,6 +37,84 @@ mod status;
 pub type Connection = tokio_rusqlite::Connection;
 
 const MIGRATIONS: [M; 1] = [M::up(include_str!("../migrations/0001_initial.sql"))];
+
+pub fn internal_error<E>(err: E) -> (StatusCode, String)
+where
+    E: std::fmt::Display,
+{
+    let err = err.to_string();
+
+    warn!("{}", err);
+
+    (StatusCode::INTERNAL_SERVER_ERROR, err)
+}
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        account::get_account_info,
+        account::update_account_info,
+        invite::get_all_invite_infos,
+        invite::get_invite_info,
+        invite::create_new_invite,
+        invite::delete_invite,
+        invite::register_with_invite_link,
+        services::get_all_services_v2,
+        services::update_service_v2,
+        services::create_service_v2,
+        services::generate_service_secret,
+        services::create_new_role_v2,
+        services::delete_role_v2,
+        audit::get_all_audit_logs,
+        login::login,
+    ),
+    components(
+        schemas(
+            account::AccountInfo,
+            account::AccountInfoUpdate,
+            account::PasswordUpdate,
+            invite::InviteInfo,
+            invite::CreateInvite,
+            invite::RegisterAccount,
+            services::ServiceInfo,
+            services::UpdateService,
+            services::CreateService,
+            services::CreateNewRole,
+            audit::AuditLog,
+            audit::AuditAction,
+            audit::UserPermissionChange,
+            login::LoginRequest,
+        )
+    ),
+    modifiers(&SecurityAddon))]
+struct ApiDoc;
+
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "api_key",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("JWT")
+                        .build(),
+                ),
+            )
+        }
+    }
+}
+
+fn v2_api() -> Router {
+    Router::new()
+        .nest("/account", account::api_route())
+        .nest("/invite", invite::api_route())
+        .nest("/service", services::api_route())
+        .nest("/audit", audit::api_route())
+        .nest("/login", login::api_route())
+}
 
 pub fn api_route(
     db: tokio_rusqlite::Connection,
@@ -65,6 +147,8 @@ pub fn api_route(
         .route("/api/permissions", post(permissions::post_permissions))
         .route("/api/account", post(account::post_account))
         .nest("/auth", idlib::api_route(client, None))
+        .nest("/api/v2", v2_api())
+        .merge(SwaggerUi::new("/api/v2/swagger-ui").url("/api/v2/openapi.json", ApiDoc::openapi()))
         .layer(Extension(IdpClient::default()))
         .layer(Extension(Arc::new(variables)))
         .layer(Extension(db))

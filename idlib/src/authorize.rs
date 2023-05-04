@@ -9,8 +9,7 @@ use async_trait::async_trait;
 use axum::{
     body::{boxed, Empty},
     extract::{
-        rejection::{ExtensionRejection, TypedHeaderRejection},
-        FromRequest, FromRequestParts,
+        rejection::{ExtensionRejection, TypedHeaderRejection}, FromRequestParts,
     },
     headers::{authorization::Bearer, Authorization},
     http::{header::SET_COOKIE, request::Parts, HeaderValue, StatusCode},
@@ -28,6 +27,9 @@ use crate::{
     create_auth_cookie, Cookies, IdpClient, RefreshTokenRequest, RefreshTokenResponse, SecretKey,
     Variables,
 };
+
+#[must_use]
+pub struct Jwt<R: Rule>(pub Payload, pub PhantomData<R>);
 
 #[must_use]
 pub struct AuthorizeCookie<R: Rule>(pub Payload, pub MaybeRefreshedToken, pub PhantomData<R>);
@@ -166,6 +168,48 @@ async fn get_token<B: Send + Sync>(req: &mut Parts, state: &B) -> Option<String>
 }
 
 #[async_trait]
+impl<B, R: Rule> FromRequestParts<B> for Jwt<R>
+where
+    B: Send + Sync,
+{
+    type Rejection = AuthorizationRejection;
+
+    async fn from_request_parts(req: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
+        let Extension(variables) =
+            Extension::<Arc<Variables>>::from_request_parts(req, state).await?;
+
+        let Some(token) = get_token(req, state).await else {
+            debug!("Failed to find auth token.");
+
+            return Err(AuthorizationRejection::MissingApiAuth);
+        };
+
+        let Extension(secret) = Extension::<SecretKey>::from_request_parts(req, state).await?;
+        let payload: Payload = token
+            .verify_with_key(&*secret.0)
+            .context("Failed to parse JWT")?;
+
+        let issued_at = Duration::from_secs(payload.issued_at);
+        let now = SystemTime::UNIX_EPOCH.elapsed().unwrap();
+
+        // tokens are only valid for 60 days
+        if now > issued_at + Duration::from_secs(variables.token_duration_seconds as u64) {
+            debug!("Token expired");
+            return Err(AuthorizationRejection::ExpiredToken);
+        }
+
+        if !R::verify(&payload.groups) {
+            debug!("Invalid permissions in JWT");
+            return Err(AuthorizationRejection::Forbidden("todo"));
+        }
+
+        debug!("Authorized as \"{}\"", payload.name);
+
+        Ok(Jwt(payload, PhantomData))
+    }
+}
+
+#[async_trait]
 impl<B, R: Rule> FromRequestParts<B> for AuthorizeCookie<R>
 where
     B: Send + Sync,
@@ -203,7 +247,6 @@ where
             debug!("Token expired, trying to refresh");
             let Extension(idp_client) =
                 Extension::<IdpClient>::from_request_parts(req, state).await?;
-
             match try_refresh_token(&variables, idp_client, token).await {
                 Ok(token) => {
                     debug!("Refreshed token");

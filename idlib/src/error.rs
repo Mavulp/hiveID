@@ -4,9 +4,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use tracing::error;
 use serde_json::json;
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Debug, Error)]
 pub enum Error {

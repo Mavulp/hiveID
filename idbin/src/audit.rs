@@ -2,13 +2,45 @@ use std::{fmt::Display, time::Duration};
 
 use anyhow::Context;
 use askama::Template;
-use axum::{response::IntoResponse, Extension};
-use idlib::{AuthorizeCookie, Has};
+use axum::{
+    response::{IntoResponse, Json},
+    routing::get,
+    Extension, Router,
+};
+use hyper::StatusCode;
+use idlib::{AuthorizeCookie, Has, Jwt};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use utoipa::ToSchema;
 
-use crate::{error::Error, into_response, Connection};
+use crate::{error::Error, internal_error, into_response, Connection};
+
+pub fn api_route() -> Router {
+    Router::new().route("/", get(get_all_audit_logs))
+}
+
+type AdminJwt = Jwt<Has<"admin">>;
+
+/// List all audit logs.
+#[utoipa::path(
+    get,
+    path = "/api/v2/audit",
+    responses(
+        (status = 200, description = "Returns a list of all audit logs", body = [Vec<AuditLog>])
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
+pub(crate) async fn get_all_audit_logs(
+    Jwt(_payload, ..): AdminJwt,
+    Extension(db): Extension<Connection>,
+) -> Result<Json<Vec<AuditLog>>, (StatusCode, String)> {
+    let audit_logs = db.call(get_audit_logs).await.map_err(internal_error)?;
+
+    Ok(Json(audit_logs))
+}
 
 pub fn log(conn: &mut rusqlite::Connection, action: AuditAction, user: &str) -> anyhow::Result<()> {
     let now = OffsetDateTime::now_utc();
@@ -22,7 +54,7 @@ pub fn log(conn: &mut rusqlite::Connection, action: AuditAction, user: &str) -> 
     Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub enum AuditAction {
     AccountUpdate(bool, bool),
     DeleteInvite(String),
@@ -96,17 +128,18 @@ impl Display for AuditAction {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct UserPermissionChange {
     pub username: String,
     pub added: Vec<String>,
     pub removed: Vec<String>,
 }
 
-pub struct Action {
-    action: AuditAction,
-    performed_by: String,
-    time_ago: Duration,
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct AuditLog {
+    pub action: AuditAction,
+    pub performed_by: String,
+    pub time_ago: Duration,
 }
 
 #[derive(Template)]
@@ -114,7 +147,7 @@ pub struct Action {
 struct AuditLogPageTemplate<'a> {
     current_page: &'static str,
     admin: bool,
-    actions: &'a [Action],
+    actions: &'a [AuditLog],
 }
 
 mod filters {
@@ -144,7 +177,7 @@ pub(crate) async fn page(
         .await
 }
 
-fn get_audit_logs(conn: &mut rusqlite::Connection) -> anyhow::Result<Vec<Action>> {
+fn get_audit_logs(conn: &mut rusqlite::Connection) -> anyhow::Result<Vec<AuditLog>> {
     let mut stmt = conn
         .prepare("SELECT action, performed_by, at FROM audit_logs ORDER BY at DESC")
         .context("Failed to prepare statement")?;
@@ -155,7 +188,7 @@ fn get_audit_logs(conn: &mut rusqlite::Connection) -> anyhow::Result<Vec<Action>
 
     let mut audit_logs = Vec::new();
     while let Some(row) = rows.next()? {
-        audit_logs.push(Action {
+        audit_logs.push(AuditLog {
             action: serde_json::de::from_str(row.get_ref(0)?.as_str()?)?,
             performed_by: row.get::<_, String>(1)?,
             time_ago: (now - OffsetDateTime::from_unix_timestamp(row.get(2)?)?)
