@@ -1,6 +1,20 @@
-/*
-Utility layout classes
-*/
+// App layout setup
+
+.app {
+  @include grid(0, 192px 1fr);
+  height: 100vh;
+  position: relative;
+
+  .router-wrap {
+    height: 100vh;
+    padding: 0 80px;
+    padding-top: 128px;
+    overflow-y: auto;
+    background-color: var(--color-bg-dark);
+  }
+}
+
+// Layout utility
 
 .flex {
   @include flex(15px);

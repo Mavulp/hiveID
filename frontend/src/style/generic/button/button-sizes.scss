@@ -11,5 +11,10 @@
     height: 28px;
     line-height: 28px;
     padding: 0 10px;
+
+    &.btn-icon {
+      width: 28px;
+      padding: 0;
+    }
   }
 }

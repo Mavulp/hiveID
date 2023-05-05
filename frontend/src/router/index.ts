@@ -5,31 +5,56 @@ import afterEach from './guards/afterEach'
 // import RouterMain from './routes/router-main'
 // import RouterQuote from './routes/router-quote'
 import RouteHome from './views/RouteHome.vue'
+import RouteInvitesVue from './views/RouteInvites.vue'
+import RouteLogVue from './views/RouteLog.vue'
+import RoutePermissionsVue from './views/RoutePermissions.vue'
+import RouteServicesVue from './views/RouteServices.vue'
+import RouteAccountVue from './views/RouteAccount.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      // Special route used as a catch-all.
       path: '/:pathMatch(.*)*',
-      // In case user wants to access a path which is not defined,
-      // they will be redirected to the following route
       redirect: {
         name: 'RouteHome',
       },
     },
     {
-      // The path to the the page
       path: '/home',
-      // Name is used for matching routes. Allowing you to change url
-      // to the page without having to update all the
       name: 'RouteHome',
       component: RouteHome,
-      // The meta object contains whatever properties you want
-      // In our
-      meta: {
-        title: 'Home',
-      },
+      meta: { title: 'Home' },
+    },
+    {
+      path: '/services',
+      name: 'RouteServices',
+      component: RouteServicesVue,
+      meta: { title: 'Services' },
+    },
+    {
+      path: '/permissions',
+      name: 'RoutePermissions',
+      component: RoutePermissionsVue,
+      meta: { title: 'User Permissions' },
+    },
+    {
+      path: '/invites',
+      name: 'RouteInvites',
+      component: RouteInvitesVue,
+      meta: { title: 'Invites' },
+    },
+    {
+      path: '/audit-log',
+      name: 'RouteLog',
+      component: RouteLogVue,
+      meta: { title: 'Audit Log' },
+    },
+    {
+      path: '/account',
+      name: 'RouteAccount',
+      component: RouteAccountVue,
+      meta: { title: 'Account' },
     },
   ],
 })

@@ -34,6 +34,10 @@ html {
     -moz-box-sizing: border-box;
     box-sizing: border-box;
   }
+
+  a {
+    color: var(--color-text);
+  }
 }
 
 @import "./app/";
