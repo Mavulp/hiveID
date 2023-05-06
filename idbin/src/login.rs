@@ -9,6 +9,7 @@ use axum::{
     http::{Response, StatusCode},
     Extension, Form,
 };
+use base64::Engine;
 use hmac::{Hmac, Mac};
 use idlib::Payload;
 use jwt::SignWithKey;
@@ -193,7 +194,9 @@ pub async fn generate_jwt_for_user_and_service(
         groups,
     };
 
-    let secret_key = base64::decode(&service.secret).context("Failed to decode service secret")?;
+    let secret_key = base64::engine::general_purpose::STANDARD
+        .decode(&service.secret)
+        .context("Failed to decode service secret")?;
     let secret_key = Hmac::<Sha256>::new_from_slice(&secret_key)
         .context("Failed to create HMAC from secret key")?;
 

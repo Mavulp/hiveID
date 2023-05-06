@@ -8,6 +8,7 @@ use axum::{
     routing::{delete, get, post, put},
     Extension, Form, Router,
 };
+use base64::Engine;
 use futures::Future;
 use idlib::{AuthorizeCookie, Has, Jwt};
 use log::warn;
@@ -341,7 +342,7 @@ async fn generate_secret(
             let mut secret_bytes = [0u8; 64];
             StdRng::from_entropy().fill_bytes(&mut secret_bytes[..]);
 
-            let secret = base64::encode(secret_bytes);
+            let secret = base64::engine::general_purpose::STANDARD.encode(secret_bytes);
             conn.execute(
                 "UPDATE services \
             SET secret = ?1 \
@@ -666,10 +667,12 @@ pub(crate) async fn post_update_service(
             nice_name: Some(update.display_name),
             description: Some(update.description),
             callback_url: Some(update.callback_url),
-            icon: update
-                .icon
-                .filter(|b| !b.is_empty())
-                .map(|b| format!("data:image/png;base64,{}", base64::encode(b))),
+            icon: update.icon.filter(|b| !b.is_empty()).map(|b| {
+                format!(
+                    "data:image/png;base64,{}",
+                    base64::engine::general_purpose::STANDARD.encode(b)
+                )
+            }),
         };
 
         update_service(db, id, update, payload.name)

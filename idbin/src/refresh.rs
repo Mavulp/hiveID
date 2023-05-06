@@ -3,6 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
     Extension, Json,
 };
+use base64::Engine;
 use hmac::{Hmac, Mac};
 use idlib::{Payload, RefreshTokenRequest, RefreshTokenResponse};
 use jwt::VerifyWithKey;
@@ -27,7 +28,9 @@ async fn refresh_token(db: Connection, request: RefreshTokenRequest) -> Result<S
         .await?
         .ok_or_else(|| Error::InvalidService(request.service.clone()))?;
 
-    let secret_key = base64::decode(&service.secret).context("Failed to decode service secret")?;
+    let secret_key = base64::engine::general_purpose::STANDARD
+        .decode(&service.secret)
+        .context("Failed to decode service secret")?;
     let secret_key = Hmac::<Sha256>::new_from_slice(&secret_key)
         .context("Failed to create HMAC from secret key")?;
 

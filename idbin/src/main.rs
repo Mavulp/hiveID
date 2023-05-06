@@ -2,7 +2,6 @@ use askama::Template;
 use axum::{
     body::{self, boxed, BoxBody, Empty, Full},
     http::{Response, StatusCode},
-    response::IntoResponse,
     routing::{get, get_service, post},
     Extension, Router,
 };
@@ -167,27 +166,17 @@ pub fn api_route(
         .layer(Extension(statuses));
 
     if let Some(serve_dir) = serve_dir {
-        router = router.nest_service(
-            "/static/",
-            get_service(ServeDir::new(serve_dir)).handle_error(handle_error),
-        );
+        router = router.nest_service("/static/", get_service(ServeDir::new(serve_dir)));
     }
 
     router
 }
 
-async fn handle_error(_err: std::io::Error) -> impl IntoResponse {
-    (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
-}
-
-pub fn into_response<T: Template>(t: &T, ext: &str) -> Response<BoxBody> {
+pub fn into_response<T: Template>(t: &T, _ext: &str) -> Response<BoxBody> {
     match t.render() {
         Ok(body) => Response::builder()
             .status(StatusCode::OK)
-            .header(
-                "content-type",
-                askama::mime::extension_to_mime_type(ext).to_string(),
-            )
+            .header("content-type", "text/html")
             .body(body::boxed(Full::from(body)))
             .unwrap(),
         Err(_) => Response::builder()

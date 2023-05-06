@@ -5,22 +5,21 @@ edition = "2021"
 license = "MPL-2.0"
 
 [dependencies]
-anyhow = "1.0.57"
-axum = { version = "0.6", features = ["http1", "query", "headers", "ws", "macros"] }
-bytes = "1.1.0"
-futures = "0.3.21"
+anyhow = "1.0.71"
+axum = { version = "0.6.18", features = ["http1", "query", "headers", "ws", "macros"] }
+bytes = "1.4.0"
+futures = "0.3.28"
 tracing = "0.1.37"
-tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "sync", "net", "io-util"] }
-serde = { version = "1.0.137", features = ["derive"] }
-serde_json = "1.0.81"
-thiserror = "1.0.31"
-tower-http = { version = "0.3.4", features = ["fs"] }
-jwt = "0.16"
-async-trait = "0.1.57"
+tokio = { version = "1.28.0", default-features = false, features = ["rt", "rt-multi-thread", "sync", "net", "io-util"] }
+serde = { version = "1.0.162", features = ["derive"] }
+serde_json = "1.0.96"
+thiserror = "1.0.40"
+jwt = "0.16.0"
+async-trait = "0.1.68"
 hmac = "0.12.1"
-sha2 = "0.10.2"
-base64 = "0.13.0"
-url = "2.2.2"
-cookie = { version = "0.16.0", features = ["secure", "percent-encode"] }
-reqwest = { version = "0.11.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
-urlencoding = "2.1.0"
+sha2 = "0.10.6"
+base64 = "0.21.0"
+url = "2.3.1"
+cookie = { version = "0.17.0", features = ["secure", "percent-encode"] }
+reqwest = { version = "0.11.17", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+urlencoding = "2.1.2"

@@ -1,7 +1,7 @@
 #![feature(adt_const_params)]
 #![allow(incomplete_features)]
 
-use base64::DecodeError;
+use base64::{DecodeError, Engine};
 use hmac::{digest::InvalidLength, Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -45,7 +45,7 @@ impl SecretKey {
     pub fn from_env() -> Result<Self, FromEnvError> {
         let secret_key: String =
             env::var("IDP_SECRET_KEY").map_err(|_| FromEnvError::VarError("IDP_SECRET_KEY"))?;
-        let secret_key = base64::decode(&secret_key)?;
+        let secret_key = base64::engine::general_purpose::STANDARD.decode(&secret_key)?;
         let secret_key = Hmac::<Sha256>::new_from_slice(&secret_key)?;
 
         Ok(SecretKey(Arc::new(secret_key)))
