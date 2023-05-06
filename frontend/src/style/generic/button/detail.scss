@@ -1,0 +1,44 @@
+.button-detail {
+  @include t();
+  display: block;
+  width: 100%;
+
+  &.unstyle {
+    border-radius: unset;
+    border: unset;
+  }
+
+  &.is-open {
+    .button-detail-content {
+      overflow: unset;
+    }
+  }
+
+  .button-detail-header {
+    @include t(0.1s);
+    // @include edge(4px 4px 0 0);
+    @include flex(10px);
+    height: 40px;
+    line-height: 40px;
+    padding: 0 20px;
+    width: 100%;
+    font-size: 1.5rem;
+    color: rgb(var(--color-text));
+
+    &:before {
+      // @include edge(4px 4px 0 0);
+    }
+
+    &.is-open {
+      background-color: rgb(var(--color-accent-light));
+      color: rgb(var(--color-accent));
+    }
+  }
+
+  .button-detail-content {
+    @include t(0.1s);
+    width: 100%;
+    max-height: 0;
+    overflow: hidden;
+  }
+}

@@ -4,16 +4,28 @@
   }
 
   &.btn-gray {
-    background-color: var(--color-bg-light);
+    // background-color: var(--color-bg-light);
     color: var(--color-text);
 
     svg {
       color: var(--color-text);
     }
 
-    &:focus,
     &:hover {
-      background-color: var(--color-bg-light-hover);
+      background-color: var(--color-bg-dark);
+    }
+  }
+
+  &.btn-white {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+
+    svg {
+      color: var(--color-text);
+    }
+
+    &:hover {
+      background-color: var(--color-bg);
     }
   }
 
@@ -25,7 +37,6 @@
       color: var(--color-text);
     }
 
-    &:focus,
     &:hover {
       background-color: var(--color-accent);
       color: var(--color-text-invert);

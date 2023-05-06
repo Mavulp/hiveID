@@ -83,8 +83,8 @@ aside {
     a {
       border-radius: var(--radius-sm);
       @include t();
-      @include flex(10px, flex-end, center);
-      font-size: 1.6rem;
+      @include flex(5px, flex-end, center);
+      font-size: 1.4rem;
       padding-right: 15px;
       text-decoration: none;
 
@@ -95,10 +95,10 @@ aside {
 
       .user-initial {
         @include font(700);
-        width: 32px;
+        width: 24px;
         text-align: center;
-        height: 32px;
-        line-height: 32px;
+        height: 24px;
+        line-height: 24px;
         border-radius: var(--radius-sm);
         font-size: 1.4rem;
         text-transform: uppercase;

@@ -1,5 +1,6 @@
 @import "./button-colors";
 @import "./button-sizes";
+@import "./detail";
 
 .button {
   @include font(500);
@@ -16,7 +17,7 @@
 
   svg {
     @include t();
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     color: var(--color-text-light);
   }
 
@@ -27,10 +28,23 @@
   &:hover {
     color: var(--color-text);
     background-color: var(--color-bg-light);
+
+    svg {
+      color: var(--color-text);
+    }
   }
 
   &.btn-icon {
     padding: 0 !important;
     width: 36px;
+    min-width: 36px;
+  }
+
+  &.btn-round {
+    border-radius: 18px;
+  }
+
+  &.btn-border {
+    border: 1px solid var(--color-border);
   }
 }

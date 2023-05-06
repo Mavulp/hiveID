@@ -2,15 +2,17 @@
 
 .app {
   @include grid(0, 192px 1fr);
-  height: 100vh;
+  // height: 100vh;
   position: relative;
+  background-color: var(--color-bg-dark);
+  // overflow-y: auto;
 
   .router-wrap {
-    height: 100vh;
+    width: 100%;
     padding: 0 80px;
-    padding-top: 128px;
-    overflow-y: auto;
-    background-color: var(--color-bg-dark);
+    padding-top: 64px;
+    max-width: 1324px;
+    margin: 0 auto;
   }
 }
 

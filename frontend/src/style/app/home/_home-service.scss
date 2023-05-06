@@ -1,0 +1,77 @@
+.home-services {
+  @include flex(20px, $a: flex-start, $w: wrap);
+
+  a {
+    text-decoration: none;
+  }
+
+  .service {
+    @include t();
+    @include flex(20px, center, center, $d: column);
+    padding: 15px;
+    border: 1px solid var(--color-border);
+    width: 128px;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    background-color: var(--color-bg);
+
+    &:hover:not(.add) {
+      box-shadow: var(--shadow);
+    }
+
+    &.add {
+      background-color: transparent;
+      border: none;
+
+      &:hover {
+        background-color: var(--color-bg);
+      }
+      // border: 2px dashed var(--color-secondary);W
+    }
+
+    .service-logo {
+      width: 96px;
+      height: 96px;
+      position: relative;
+
+      svg {
+        font-size: 4rem;
+        position: absolute;
+        color: var(--color-secondary);
+        // opacity: 0.5;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      img {
+        border-radius: var(--radius-sm);
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        position: relative;
+
+        &:before {
+          content: "";
+          display: block;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background-color: var(--color-secondary);
+          opacity: 0.5;
+        }
+      }
+    }
+
+    span {
+      width: 100%;
+      text-align: center;
+      font-size: 1.4rem;
+    }
+  }
+}

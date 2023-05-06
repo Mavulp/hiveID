@@ -1,2 +1,45 @@
 @import "./home/index";
 @import "./navigation/index";
+@import "./services/index";
+
+.page-title {
+  margin-bottom: 64px;
+
+  h1 {
+    @include font(900);
+    font-size: 5rem;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  p {
+    font-size: 2rem;
+    line-height: 1.5em;
+
+    &:not(:last-child) {
+      margin-bottom: 10px;
+    }
+  }
+
+  // &.sticky {
+  //   margin-bottom: 16px;
+  // }
+}
+
+.page-title-sticky {
+  @include flex(16px);
+  padding-top: 16px;
+  position: sticky;
+  top: 0;
+  margin: 0 -64px;
+  padding: 16px 64px;
+  margin-top: -32px;
+  z-index: 10;
+  background-color: rgba(var(--rgb-bg-dark), 0.5);
+  backdrop-filter: blur(10px);
+
+  .form-item {
+    width: 512px;
+    margin: 0;
+  }
+}
