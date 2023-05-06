@@ -19,7 +19,7 @@ use rusqlite::params;
 use serde::Deserialize;
 
 use crate::{
-    audit::{self, AuditAction},
+    audits::{self, AuditAction},
     error::Error,
     into_response, Connection,
 };
@@ -186,7 +186,7 @@ pub(crate) async fn post_register_impl(register: Register, db: Connection) -> Re
             .context("Failed to insert user role")?;
         }
 
-        audit::log(
+        audits::log(
             conn,
             AuditAction::ConsumeInvite(register.invite.clone()),
             &register.username,

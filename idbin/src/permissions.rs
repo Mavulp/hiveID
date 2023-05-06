@@ -19,7 +19,7 @@ use rusqlite::params;
 use tokio_rusqlite::Connection;
 
 use crate::{
-    audit::{self, UserPermissionChange},
+    audits::{self, UserPermissionChange},
     error::Error,
     into_response,
 };
@@ -228,9 +228,9 @@ pub(crate) async fn post_permissions_impl(
             }
         }
 
-        audit::log(
+        audits::log(
             conn,
-            audit::AuditAction::PermissionChange(
+            audits::AuditAction::PermissionChange(
                 audit_changes
                     .into_iter()
                     .map(|(k, (a, r))| UserPermissionChange {

@@ -1,4 +1,4 @@
-use std::{fmt::Display, time::Duration};
+use std::fmt::Display;
 
 use anyhow::Context;
 use askama::Template;
@@ -25,7 +25,7 @@ type AdminJwt = Jwt<Has<"admin">>;
 /// List all audit logs.
 #[utoipa::path(
     get,
-    path = "/api/v2/audit",
+    path = "/api/v2/audits",
     responses(
         (status = 200, description = "Returns a list of all audit logs", body = [Vec<AuditLog>])
     ),
@@ -139,7 +139,9 @@ pub struct UserPermissionChange {
 pub struct AuditLog {
     pub action: AuditAction,
     pub performed_by: String,
-    pub time_ago: Duration,
+
+    #[serde(with = "time::serde::timestamp")]
+    pub at: OffsetDateTime,
 }
 
 #[derive(Template)]
@@ -148,15 +150,6 @@ struct AuditLogPageTemplate<'a> {
     current_page: &'static str,
     admin: bool,
     actions: &'a [AuditLog],
-}
-
-mod filters {
-    use relativetime::NegativeRelativeTime;
-    use std::time::Duration;
-
-    pub fn duration(duration: &Duration) -> ::askama::Result<String> {
-        Ok(duration.to_relative_in_past())
-    }
 }
 
 pub(crate) async fn page(
@@ -184,16 +177,12 @@ fn get_audit_logs(conn: &mut rusqlite::Connection) -> anyhow::Result<Vec<AuditLo
 
     let mut rows = stmt.query(params![])?;
 
-    let now = OffsetDateTime::now_utc();
-
     let mut audit_logs = Vec::new();
     while let Some(row) = rows.next()? {
         audit_logs.push(AuditLog {
             action: serde_json::de::from_str(row.get_ref(0)?.as_str()?)?,
             performed_by: row.get::<_, String>(1)?,
-            time_ago: (now - OffsetDateTime::from_unix_timestamp(row.get(2)?)?)
-                .try_into()
-                .unwrap(),
+            at: OffsetDateTime::from_unix_timestamp(row.get(2)?)?,
         });
     }
 

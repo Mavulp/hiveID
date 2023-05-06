@@ -26,7 +26,7 @@ impl TestServer {
         let response = ureq::builder()
             .redirects(0)
             .build()
-            .post(&format!("{}/api/v2/login", self.addr))
+            .post(&format!("{}/api/v2/auth/login", self.addr))
             .send_json(ureq::json!({
                 "username": "root",
                 "password": "pass",

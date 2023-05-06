@@ -1,4 +1,3 @@
-use std::time::Duration;
 use std::time::SystemTime;
 
 use anyhow::Context;
@@ -24,7 +23,7 @@ use tracing::debug;
 use utoipa::ToSchema;
 
 use crate::{
-    audit::{self, AuditAction},
+    audits::{self, AuditAction},
     error::Error,
     internal_error, into_response,
 };
@@ -44,14 +43,20 @@ pub fn api_route() -> Router {
 pub struct InviteInfo {
     /// The unique ID of the invite. This ID is used when registering.
     key: String,
+
     /// Who created the invite.
     created_by: String,
+
     /// When the invite was created.
-    created_ago: Duration,
+    #[serde(with = "time::serde::timestamp")]
+    created: OffsetDateTime,
+
     /// Who the invite was redeemed by.
     used_by: Option<String>,
+
     /// When the invite was redeemed.
-    used_ago: Option<Duration>,
+    #[serde(with = "time::serde::timestamp::option")]
+    used: Option<OffsetDateTime>,
 }
 
 /// A request to create a new invite link.
@@ -76,7 +81,7 @@ type AdminJwt = Jwt<Has<"">>;
 /// Registers an account using the provided invite ID.
 #[utoipa::path(
     post,
-    path = "/api/v2/invite/{key}",
+    path = "/api/v2/invites/{key}",
     request_body = RegisterAccount,
     params(
         ("key" = String, Path, description = "The invite ID")
@@ -130,7 +135,7 @@ pub(crate) async fn register_with_invite_link(
             .context("Failed to insert user role")?;
         }
 
-        audit::log(
+        audits::log(
             conn,
             AuditAction::ConsumeInvite(key.clone()),
             &create.username,
@@ -148,7 +153,7 @@ pub(crate) async fn register_with_invite_link(
 /// Creates a new invite link.
 #[utoipa::path(
     post,
-    path = "/api/v2/invite",
+    path = "/api/v2/invites",
     request_body = CreateInvite,
     responses(
         (status = 200, description = "Invitation was succesfully created", body = [InviteInfo])
@@ -172,7 +177,7 @@ pub(crate) async fn create_new_invite(
 /// List all invites.
 #[utoipa::path(
     get,
-    path = "/api/v2/invite",
+    path = "/api/v2/invites",
     responses(
         (status = 200, description = "List all invites successfully", body = [Vec<InviteInfo>])
     ),
@@ -192,15 +197,15 @@ pub(crate) async fn get_all_invite_infos(
             |Link {
                  key,
                  created_by,
-                 created_ago,
+                 created,
                  used_by,
-                 used_ago,
+                 used,
              }| InviteInfo {
                 key,
                 created_by,
-                created_ago,
+                created,
                 used_by,
-                used_ago,
+                used,
             },
         )
         .collect::<Vec<InviteInfo>>();
@@ -211,7 +216,7 @@ pub(crate) async fn get_all_invite_infos(
 /// List invite information.
 #[utoipa::path(
     get,
-    path = "/api/v2/invite/{key}",
+    path = "/api/v2/invites/{key}",
     params(
         ("key" = String, Path, description = "The invite ID")
     ),
@@ -234,15 +239,15 @@ pub(crate) async fn get_invite_info(
             |Link {
                  key,
                  created_by,
-                 created_ago,
+                 created,
                  used_by,
-                 used_ago,
+                 used,
              }| InviteInfo {
                 key,
                 created_by,
-                created_ago,
+                created,
                 used_by,
-                used_ago,
+                used,
             },
         )
         .find(|i| i.key == key)
@@ -259,7 +264,7 @@ pub(crate) async fn get_invite_info(
 /// Delete an existing and unclaimed invitation.
 #[utoipa::path(
     delete,
-    path = "/api/v2/invite/{key}",
+    path = "/api/v2/invites/{key}",
     params(
         ("key" = String, Path, description = "The invite ID")
     ),
@@ -283,7 +288,7 @@ pub(crate) async fn delete_invite(
         )
         .context("Failed to delete invite")?;
 
-        audit::log(conn, AuditAction::DeleteInvite(key), &payload.name)?;
+        audits::log(conn, AuditAction::DeleteInvite(key), &payload.name)?;
 
         Ok::<(), anyhow::Error>(())
     })
@@ -309,14 +314,14 @@ pub(crate) async fn create_invite_link(
             )
             .context("Failed to delete invite")?;
 
-            audit::log(conn, AuditAction::CreateInvite(key.clone()), &username)?;
+            audits::log(conn, AuditAction::CreateInvite(key.clone()), &username)?;
 
             let info = InviteInfo {
                 key,
                 created_by: username,
-                created_ago: Duration::from_secs(0),
+                created: OffsetDateTime::now_utc(),
                 used_by: None,
-                used_ago: None,
+                used: None,
             };
 
             Ok::<InviteInfo, anyhow::Error>(info)
@@ -380,7 +385,6 @@ async fn get_links(db: Connection) -> anyhow::Result<Vec<Link>> {
             )
             .context("Failed to prepare link statement")?;
 
-        let now = OffsetDateTime::now_utc();
         let links = stmt
             .query_map(params![], |row| {
                 let info = serde_rusqlite::from_row::<DbLinkInfo>(row).unwrap();
@@ -388,16 +392,11 @@ async fn get_links(db: Connection) -> anyhow::Result<Vec<Link>> {
                 let link = Link {
                     key: info.key,
                     created_by: info.created_by,
-                    created_ago: (now
-                        - OffsetDateTime::from_unix_timestamp(info.created_at).unwrap())
-                    .try_into()
-                    .unwrap(),
+                    created: OffsetDateTime::from_unix_timestamp(info.created_at).unwrap(),
                     used_by: info.used_by,
-                    used_ago: info.used_at.map(|at| {
-                        (now - OffsetDateTime::from_unix_timestamp(at).unwrap())
-                            .try_into()
-                            .unwrap()
-                    }),
+                    used: info
+                        .used_at
+                        .map(|at| OffsetDateTime::from_unix_timestamp(at).unwrap()),
                 };
 
                 Ok(link)
@@ -425,9 +424,9 @@ pub fn router() -> Router {
 struct Link {
     key: String,
     created_by: String,
-    created_ago: Duration,
+    created: OffsetDateTime,
     used_by: Option<String>,
-    used_ago: Option<Duration>,
+    used: Option<OffsetDateTime>,
 }
 
 #[derive(Template)]
@@ -438,15 +437,6 @@ struct InvitePageTemplate {
     links: Vec<Link>,
     // services: &'a HashMap<String, Service>,
     error: Option<String>,
-}
-
-mod filters {
-    use relativetime::NegativeRelativeTime;
-    use std::time::Duration;
-
-    pub fn duration(duration: &Duration) -> ::askama::Result<String> {
-        Ok(duration.to_relative_in_past())
-    }
 }
 
 #[derive(Deserialize)]
@@ -519,7 +509,7 @@ pub(crate) async fn delete_invite_impl(
         )
         .context("Failed to delete invite")?;
 
-        audit::log(conn, AuditAction::DeleteInvite(key), &name)?;
+        audits::log(conn, AuditAction::DeleteInvite(key), &name)?;
 
         Ok::<(), anyhow::Error>(())
     })

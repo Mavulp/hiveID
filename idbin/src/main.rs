@@ -21,11 +21,12 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc};
 
-mod account;
-mod audit;
+mod accounts;
+mod audits;
+mod auth;
 mod error;
 mod home;
-mod invite;
+mod invites;
 mod logging;
 mod login;
 mod permissions;
@@ -52,41 +53,51 @@ where
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        account::get_account_info,
-        account::update_account_info,
-        invite::get_all_invite_infos,
-        invite::get_invite_info,
-        invite::create_new_invite,
-        invite::delete_invite,
-        invite::register_with_invite_link,
+        accounts::get_account_info,
+        accounts::update_account_info,
+        invites::get_all_invite_infos,
+        invites::get_invite_info,
+        invites::create_new_invite,
+        invites::delete_invite,
+        invites::register_with_invite_link,
         services::get_all_services_v2,
         services::update_service_v2,
         services::create_service_v2,
         services::generate_service_secret,
         services::create_new_role_v2,
         services::delete_role_v2,
-        audit::get_all_audit_logs,
-        login::login,
+        audits::get_all_audit_logs,
+        auth::login,
+        auth::refresh,
     ),
     components(
         schemas(
-            account::AccountInfo,
-            account::AccountInfoUpdate,
-            account::PasswordUpdate,
-            invite::InviteInfo,
-            invite::CreateInvite,
-            invite::RegisterAccount,
+            accounts::AccountInfo,
+            accounts::AccountInfoUpdate,
+            accounts::PasswordUpdate,
+            invites::InviteInfo,
+            invites::CreateInvite,
+            invites::RegisterAccount,
             services::ServiceInfo,
             services::UpdateService,
             services::CreateService,
             services::CreateNewRole,
-            audit::AuditLog,
-            audit::AuditAction,
-            audit::UserPermissionChange,
-            login::LoginRequest,
+            audits::AuditLog,
+            audits::AuditAction,
+            audits::UserPermissionChange,
+            auth::LoginRequest,
+            auth::RefreshRequest,
+            auth::RefreshResponse,
         )
     ),
-    modifiers(&SecurityAddon))]
+    modifiers(&SecurityAddon),
+    tags(
+        (name = "accounts", description = "Account management API"),
+        (name = "services", description = "Service management API"),
+        (name = "invites", description = "Invite management API"),
+        (name = "audits", description = "Audit log management API"),
+        (name = "auth", description = "Authentication API"),
+    ))]
 struct ApiDoc;
 
 struct SecurityAddon;
@@ -109,11 +120,11 @@ impl Modify for SecurityAddon {
 
 fn v2_api() -> Router {
     Router::new()
-        .nest("/accounts", account::api_route())
-        .nest("/invites", invite::api_route())
+        .nest("/accounts", accounts::api_route())
+        .nest("/invites", invites::api_route())
         .nest("/services", services::api_route())
-        .nest("/audits", audit::api_route())
-        .nest("/login", login::api_route())
+        .nest("/audits", audits::api_route())
+        .nest("/auth", auth::api_route())
 }
 
 pub fn api_route(
@@ -137,15 +148,15 @@ pub fn api_route(
         .route("/login", get(login::page))
         .route("/refresh", post(refresh::post_refresh_token))
         .nest("/register", register::router())
-        .nest("/account", account::router())
+        .nest("/account", accounts::router())
         .nest("/admin/services", services::router())
-        .nest("/admin/invite", invite::router())
+        .nest("/admin/invite", invites::router())
         .route("/admin/permissions", get(permissions::page))
-        .route("/admin/audit", get(audit::page))
+        .route("/admin/audit", get(audits::page))
         .route("/api/health", get(health))
         .route("/api/login", post(login::post_login))
         .route("/api/permissions", post(permissions::post_permissions))
-        .route("/api/account", post(account::post_account))
+        .route("/api/account", post(accounts::post_account))
         .nest("/auth", idlib::api_route(client, None))
         .nest("/api/v2", v2_api())
         .merge(SwaggerUi::new("/api/v2/swagger-ui").url("/api/v2/openapi.json", ApiDoc::openapi()))

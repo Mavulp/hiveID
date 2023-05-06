@@ -44,15 +44,15 @@
                             {% endif %}
                         </td>
                         <td>{{ link.created_by }}</td>
-                        <td>{{ link.created_ago|duration }}</td>
+                        <td>{{ link.created }}</td>
                         <td>
                             {% if let Some(used_by) = link.used_by %}
                             {{ used_by }}
                             {% endif %}
                         </td>
                         <td>
-                            {% if let Some(used_ago) = link.used_ago %}
-                            {{ used_ago|duration }}
+                            {% if let Some(used_ago) = link.used %}
+                            {{ used_ago }}
                             {% endif %}
                         </td>
                         <td>

@@ -1,5 +1,5 @@
 use asserhttp::*;
-use jsonpath_rust::{JsonPathQuery};
+use jsonpath_rust::JsonPathQuery;
 use serde_json::{json, Value};
 
 use crate::common::TestServer;
@@ -104,12 +104,7 @@ fn get_services(server: &mut TestServer) -> Result<ureq::Response, ureq::Transpo
 }
 
 fn create_service(server: &mut TestServer, id: &str) -> Result<ureq::Response, ureq::Transport> {
-    server.post(
-        "/api/v2/services",
-        json!({
-            "id": id
-        }),
-    )
+    server.post("/api/v2/services", json!({ "id": id }))
 }
 
 fn create_role(
@@ -119,9 +114,7 @@ fn create_role(
 ) -> Result<ureq::Response, ureq::Transport> {
     server.post(
         &format!("/api/v2/services/{service_id}/roles"),
-        json!({
-            "name": role
-        }),
+        json!({ "name": role }),
     )
 }
 

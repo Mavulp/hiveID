@@ -17,7 +17,7 @@ use serde_rusqlite::{from_row, from_rows};
 use tokio_rusqlite::Connection;
 use utoipa::ToSchema;
 
-use crate::{audit, error::Error, internal_error, into_response};
+use crate::{audits, error::Error, internal_error, into_response};
 
 pub fn api_route() -> Router {
     Router::new()
@@ -93,7 +93,7 @@ type AdminJwt = Jwt<Has<"admin">>;
 /// List all services.
 #[utoipa::path(
     get,
-    path = "/api/v2/service",
+    path = "/api/v2/services",
     responses(
         (status = 200, description = "List all services successfully", body = [Vec<ServiceInfo>])
     ),
@@ -136,7 +136,7 @@ pub(crate) async fn get_all_services_v2(
 /// Create a service.
 #[utoipa::path(
     post,
-    path = "/api/v2/service",
+    path = "/api/v2/services",
     request_body = CreateService,
     responses(
         (status = 200, description = "Created service successfully")
@@ -167,7 +167,7 @@ pub(crate) async fn create_service_v2(
 /// Update a service.
 #[utoipa::path(
     put,
-    path = "/api/v2/service/{id}",
+    path = "/api/v2/services/{id}",
     request_body = UpdateService,
     params(
         ("id" = String, Path, description = "The service ID")
@@ -195,7 +195,7 @@ pub(crate) async fn update_service_v2(
 /// Regenerate the secret key for a service.
 #[utoipa::path(
     post,
-    path = "/api/v2/service/{id}/secret",
+    path = "/api/v2/services/{id}/secret",
     params(
         ("id" = String, Path, description = "The service ID")
     ),
@@ -221,7 +221,7 @@ pub(crate) async fn generate_service_secret(
 /// Create a new role for a service.
 #[utoipa::path(
     post,
-    path = "/api/v2/service/{id}/role",
+    path = "/api/v2/services/{id}/role",
     params(
         ("id" = String, Path, description = "The service ID")
     ),
@@ -249,7 +249,7 @@ pub(crate) async fn create_new_role_v2(
 /// Delete a role for a service.
 #[utoipa::path(
     delete,
-    path = "/api/v2/service/{id}/role/{role}",
+    path = "/api/v2/services/{id}/roles/{role}",
     params(
         ("id" = String, Path, description = "The service ID"),
         ("role" = String, Path, description = "The role to delete")
@@ -350,9 +350,9 @@ async fn generate_secret(
             )
             .context("Failed to update secret for service")?;
 
-            audit::log(
+            audits::log(
                 conn,
-                audit::AuditAction::ServiceSecretGenerate(service_id),
+                audits::AuditAction::ServiceSecretGenerate(service_id),
                 &performed_by,
             )
             .context("Failed to audit log secret update")?;
@@ -415,9 +415,9 @@ pub(crate) async fn update_service(
             .context("Failed to update service")?;
         }
 
-        audit::log(
+        audits::log(
             conn,
-            audit::AuditAction::ServiceChange(service_id),
+            audits::AuditAction::ServiceChange(service_id),
             &performed_by,
         )
         .context("Failed to audit log service update")?;
@@ -442,9 +442,9 @@ async fn create_new_service(
         )
         .context("Failed to create new service")?;
 
-        audit::log(
+        audits::log(
             conn,
-            audit::AuditAction::CreatedService(service_id),
+            audits::AuditAction::CreatedService(service_id),
             &performed_by,
         )
         .context("Failed to audit log creating new service")?;
@@ -470,9 +470,9 @@ async fn create_new_role(
         )
         .context("Failed to create new role")?;
 
-        audit::log(
+        audits::log(
             conn,
-            audit::AuditAction::NewServiceRole(service_id, role_name),
+            audits::AuditAction::NewServiceRole(service_id, role_name),
             &performed_by,
         )
         .context("Failed to audit log adding role")?;
@@ -498,9 +498,9 @@ async fn delete_role(
         )
         .context("Failed to delete role")?;
 
-        audit::log(
+        audits::log(
             conn,
-            audit::AuditAction::DeletedServiceRole(service_id, role_name),
+            audits::AuditAction::DeletedServiceRole(service_id, role_name),
             &performed_by,
         )
         .context("Failed to audit log role deletion")?;

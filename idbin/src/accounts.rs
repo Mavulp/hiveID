@@ -19,7 +19,7 @@ use tokio_rusqlite::Connection;
 use utoipa::ToSchema;
 
 use crate::{
-    audit::{self, AuditAction},
+    audits::{self, AuditAction},
     error::Error,
     internal_error, into_response,
 };
@@ -186,7 +186,7 @@ async fn update_account(
             )?;
         }
 
-        audit::log(
+        audits::log(
             conn,
             AuditAction::AccountUpdate(changed_password, changed_email),
             &username,
