@@ -1,11 +1,11 @@
 use asserhttp::*;
-use serde_json::{json, Value};
+use serde_json::{json};
 
 use crate::common::TestServer;
 
 #[test]
-fn test_create_service() {
-    let mut server = TestServer::spawn();
+fn test_auth_endpoints() {
+    let server = TestServer::spawn();
 
     server.get("/api/v2/account").expect_status_unauthorized();
     server.put("/api/v2/account", None).expect_status_unauthorized();

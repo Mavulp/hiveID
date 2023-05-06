@@ -554,7 +554,6 @@ struct ServicesPageTemplate {
     current_page: &'static str,
     admin: bool,
     services: Vec<Service>,
-    error: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -582,7 +581,6 @@ pub(crate) async fn page(
                 current_page: "/admin/services",
                 admin: true,
                 services,
-                error: None,
             };
 
             Ok::<_, Error>(into_response(&template, "html"))

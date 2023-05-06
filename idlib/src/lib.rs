@@ -1,4 +1,5 @@
 #![feature(adt_const_params)]
+#![allow(incomplete_features)]
 
 use base64::DecodeError;
 use hmac::{digest::InvalidLength, Hmac, Mac};

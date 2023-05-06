@@ -217,7 +217,7 @@ struct AccountPageTemplate {
     username: String,
     email: String,
     admin: bool,
-    error: Option<String>,
+    _error: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -297,7 +297,7 @@ async fn render_page(
         username: payload.name,
         email,
         admin: payload.groups.iter().any(|s| s == "admin"),
-        error,
+        _error: error,
     };
 
     Ok(into_response(&template, "html"))
@@ -307,6 +307,7 @@ async fn render_page(
 pub(crate) struct AccountUpdate {
     email: String,
     password: String,
+    #[allow(dead_code)]
     password2: String,
     old_password: String,
 }

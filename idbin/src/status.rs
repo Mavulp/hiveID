@@ -69,7 +69,7 @@ struct StatusPageTemplate<'a> {
     statuses: &'a [Status],
 }
 
-pub(crate) async fn page(
+pub(crate) async fn _page(
     Extension(Statuses(statuses)): Extension<Statuses>,
 ) -> Result<Response<BoxBody>, Error> {
     let statuses = statuses.read().await;
