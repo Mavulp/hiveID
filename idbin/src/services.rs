@@ -25,8 +25,8 @@ pub fn api_route() -> Router {
         .route("/:id", put(update_service_v2))
         .route("/", post(create_service_v2))
         .route("/:id/secret", post(generate_service_secret))
-        .route("/:id/role", post(create_new_role_v2))
-        .route("/:id/role/:role", delete(delete_role_v2))
+        .route("/:id/roles", post(create_new_role_v2))
+        .route("/:id/roles/:role", delete(delete_role_v2))
 }
 
 /// Information about a service.

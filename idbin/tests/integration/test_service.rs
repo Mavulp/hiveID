@@ -100,12 +100,12 @@ fn test_delete_role() {
 }
 
 fn get_services(server: &mut TestServer) -> Result<ureq::Response, ureq::Transport> {
-    server.get("/api/v2/service")
+    server.get("/api/v2/services")
 }
 
 fn create_service(server: &mut TestServer, id: &str) -> Result<ureq::Response, ureq::Transport> {
     server.post(
-        "/api/v2/service",
+        "/api/v2/services",
         json!({
             "id": id
         }),
@@ -118,7 +118,7 @@ fn create_role(
     role: &str,
 ) -> Result<ureq::Response, ureq::Transport> {
     server.post(
-        &format!("/api/v2/service/{service_id}/role"),
+        &format!("/api/v2/services/{service_id}/roles"),
         json!({
             "name": role
         }),
@@ -130,5 +130,5 @@ fn delete_role(
     service_id: &str,
     role: &str,
 ) -> Result<ureq::Response, ureq::Transport> {
-    server.delete(&format!("/api/v2/service/{service_id}/role/{role}"))
+    server.delete(&format!("/api/v2/services/{service_id}/roles/{role}"))
 }

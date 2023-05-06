@@ -10,7 +10,7 @@ fn test_account() {
     server.claim_admin_and_auth().unwrap();
 
     server
-        .get(&format!("/api/v2/account"))
+        .get(&format!("/api/v2/accounts"))
         .unwrap()
         .expect_status_ok()
         .expect_content_type_json()
@@ -21,7 +21,7 @@ fn test_account() {
 
     server
         .put(
-            "/api/v2/account",
+            "/api/v2/accounts",
             json!({
                 "newEmail": "new@email.com"
             }),
@@ -30,7 +30,7 @@ fn test_account() {
         .expect_status_ok();
 
     server
-        .get(&format!("/api/v2/account"))
+        .get(&format!("/api/v2/accounts"))
         .unwrap()
         .expect_status_ok()
         .expect_content_type_json()

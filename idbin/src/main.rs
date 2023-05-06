@@ -109,10 +109,10 @@ impl Modify for SecurityAddon {
 
 fn v2_api() -> Router {
     Router::new()
-        .nest("/account", account::api_route())
-        .nest("/invite", invite::api_route())
-        .nest("/service", services::api_route())
-        .nest("/audit", audit::api_route())
+        .nest("/accounts", account::api_route())
+        .nest("/invites", invite::api_route())
+        .nest("/services", services::api_route())
+        .nest("/audits", audit::api_route())
         .nest("/login", login::api_route())
 }
 

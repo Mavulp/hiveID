@@ -17,7 +17,7 @@ impl TestServer {
     }
 
     pub fn claim_admin_and_auth(&mut self) -> anyhow::Result<()> {
-        ureq::post(&format!("{}/api/v2/invite/admin", self.addr)).send_json(ureq::json!({
+        ureq::post(&format!("{}/api/v2/invites/admin", self.addr)).send_json(ureq::json!({
             "email": "email@email.com",
             "username": "root",
             "password": "pass"
