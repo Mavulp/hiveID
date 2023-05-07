@@ -1,10 +1,21 @@
 <script setup lang='ts'>
 import { IconCheckCircleBold, IconClockCountdownBold, IconUserPlusBold } from '@iconify-prerendered/vue-ph'
+import { useClipboard } from '@vueuse/core'
 import Pending from '../../components/invites/Pending.vue'
 import Used from '../../components/invites/Used.vue'
 import { useToast } from '../../store/toast'
 
 const toast = useToast()
+const { copy } = useClipboard()
+
+function createInvite() {
+  copy('shit')
+
+  toast.push({
+    type: 'success',
+    message: 'Invite link copied to clipboard',
+  }, true)
+}
 </script>
 
 <template>
@@ -12,7 +23,7 @@ const toast = useToast()
     <div class="page-title">
       <div class="flex">
         <h1>Invites</h1>
-        <button class="button btn-border btn-accent  btn-round">
+        <button class="button btn-border btn-accent  btn-round" @click="createInvite()">
           <IconUserPlusBold />
           New Invite
         </button>

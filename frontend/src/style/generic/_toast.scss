@@ -7,7 +7,7 @@ This is the styling for toast notifications
 
   display: block;
   position: fixed;
-  bottom: 40px;
+  top: 40px;
   right: 20px;
   max-width: var(--toast-max-width);
   z-index: 1000000;
@@ -30,7 +30,7 @@ This is the styling for toast notifications
         position: relative;
         background-color: var(--color-bg);
         padding-left: 22px;
-        box-shadow: var(--shadow);
+        // box-shadow: var(--shadow);
         border: 1px solid var(--color-border);
 
         &.has-action {
@@ -55,7 +55,7 @@ This is the styling for toast notifications
           display: block;
           position: absolute;
           left: 10px;
-          top: 9px;
+          top: 11px;
           height: 15px;
           width: 4px;
         }
