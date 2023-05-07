@@ -1,21 +1,43 @@
+.invite-page {
+  padding-bottom: 512px;
+
+  .page-title {
+    h1 {
+      margin-bottom: 0;
+    }
+
+    .flex {
+      margin-bottom: 10px;
+    }
+  }
+}
+
 .invite-list {
   display: block;
   position: relative;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
+  margin-top: -10px;
 
   .list-title {
     @include flex(20px);
-    // display: block;
-    margin-bottom: 10px;
+    padding-bottom: 10px;
+    padding-top: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: rgba(var(--rgb-bg-dark), 0.5);
+    backdrop-filter: blur(10px);
+
+    span {
+      color: var(--color-text-light);
+      font-size: 1.4rem;
+    }
 
     .title-icon {
-      // position: absolute;
       @include flex(0, center);
-      // top: -10px;
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      // right: calc(100% + 16px);
 
       &.pending {
         background-color: #ffd8a8;
@@ -53,16 +75,30 @@
   .invite {
     @include flex(0);
     width: 100%;
-    padding: 15px;
+    padding: 15px 20px;
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
+    background-color: var(--color-bg);
     cursor: pointer;
     margin-bottom: 10px;
 
+    &:hover:not(.redeemed) {
+      background-color: var(--color-bg-dimmed);
+    }
+
     &.redeemed {
+      cursor: default;
+
       .invite-title {
         .url {
           font-size: 1.6rem;
+          margin-bottom: 5px;
+        }
+      }
+
+      .invite-title {
+        .info {
+          pointer-events: all;
         }
       }
     }
@@ -73,14 +109,14 @@
       .url {
         @include font(500);
         display: block;
-        font-size: 2rem;
+        font-size: 2.2rem;
         text-decoration: none;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
       }
 
       .info {
-        @include flex(20px);
-        pointer-events: none !important;
+        @include flex(15px);
+        pointer-events: none;
 
         span {
           font-size: 1.2rem;

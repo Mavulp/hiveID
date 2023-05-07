@@ -46,11 +46,7 @@ function revoke() {
       <span class="url">v-cv_rMYQtC5j4UaXr5aew</span>
       <div class="info">
         <span>
-          Issued by <b>dolanske</b>
-        </span>
-        <div class="vertical-divider" />
-        <span>
-          Created 4 days ago
+          Issued by <b>dolanske</b> 4 days ago
         </span>
       </div>
     </div>

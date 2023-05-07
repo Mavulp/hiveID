@@ -17,11 +17,13 @@ Available tooltip positions:
 
   &:before {
     @include t();
-    @include font(400);
+    @include font(500);
     background-color: var(--color-black);
     color: var(--color-white);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
 
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     position: absolute;
     padding: 2px 10px;
     height: 22px;

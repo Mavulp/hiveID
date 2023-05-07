@@ -28,8 +28,12 @@
     justify-content: flex-end;
   }
 
-  &.gap-8 {
+  &.gap-10 {
     gap: 10px;
+  }
+
+  &.gap-5 {
+    gap: 5px;
   }
 }
 

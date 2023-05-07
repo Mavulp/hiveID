@@ -1,16 +1,22 @@
 <script setup lang='ts'>
-import { IconCheckCircleBold, IconClockCountdownBold } from '@iconify-prerendered/vue-ph'
+import { IconCheckCircleBold, IconClockCountdownBold, IconUserPlusBold } from '@iconify-prerendered/vue-ph'
 import Pending from '../../components/invites/Pending.vue'
-import Redeemed from '../../components/invites/Redeemed.vue'
+import Used from '../../components/invites/Used.vue'
 import { useToast } from '../../store/toast'
 
 const toast = useToast()
 </script>
 
 <template>
-  <div>
+  <div class="invite-page">
     <div class="page-title">
-      <h1>Invite</h1>
+      <div class="flex">
+        <h1>Invites</h1>
+        <button class="button btn-border btn-accent  btn-round">
+          <IconUserPlusBold />
+          New Invite
+        </button>
+      </div>
       <p>Create and manage invite links to the authentication system.</p>
     </div>
     <!-- <hr> -->
@@ -22,6 +28,8 @@ const toast = useToast()
         <strong>
           Pending
         </strong>
+        <div class="flex-1" />
+        <span>2 Invites</span>
       </div>
 
       <div class="invite-list-items">
@@ -35,12 +43,15 @@ const toast = useToast()
           <IconCheckCircleBold />
         </div>
         <strong>
-          Redeemed
+          Used
         </strong>
+
+        <div class="flex-1" />
+        <span>10 Used Invites</span>
       </div>
 
       <div class="invite-list-items">
-        <Redeemed v-for="one in 12" :key="one" :invite="{ key: 'cum' }" />
+        <Used v-for="one in 12" :key="one" :invite="{ key: 'cum' }" />
       </div>
     </div>
   </div>
