@@ -11,9 +11,9 @@
       color: var(--color-text);
     }
 
-    &:hover {
-      background-color: var(--color-bg-dark);
-    }
+    // &:hover {
+    //   background-color: var(--color-bg-dark);
+    // }
   }
 
   &.btn-white {
@@ -25,24 +25,24 @@
     }
 
     &:hover {
-      background-color: var(--color-bg);
+      background-color: var(--color-bg-dark);
     }
   }
 
   &.btn-accent {
     background-color: var(--color-accent-bg);
-    color: var(--color-text);
+    color: var(--color-accent);
 
     svg {
-      color: var(--color-text);
+      color: var(--color-accent);
     }
 
     &:hover {
       background-color: var(--color-accent);
-      color: var(--color-text-invert);
+      color: var(--color-text-white);
 
       svg {
-        color: var(--color-text-invert);
+        color: var(--color-text-white);
       }
     }
   }

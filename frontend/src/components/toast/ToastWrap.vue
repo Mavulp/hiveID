@@ -1,6 +1,7 @@
 <script setup lang='ts'>
 import { useToast } from '../../store/toast'
 import ToastItem from './ToastItem.vue'
+
 const toasts = useToast()
 </script>
 

@@ -3,7 +3,7 @@ This is the styling for toast notifications
 */
 .toasts-wrap {
   --toast-max-width: 592px;
-  --toast-min-width: 256px;
+  --toast-min-width: 324px;
 
   display: block;
   position: fixed;
@@ -17,37 +17,45 @@ This is the styling for toast notifications
     width: 100%;
 
     li {
-      @include flex(0, $justify: flex-end);
+      @include flex(0, flex-end);
       width: 100%;
       margin-bottom: 10px;
 
       .toast-item {
-        @include radius(var(--radius-sm));
+        border-radius: var(--radius-lg);
         display: block;
         padding: 10px 15px;
         min-width: var(--toast-min-width);
         max-width: var(--toast-max-width);
         position: relative;
-        background-color: var(--color-bg-light);
-        padding-left: 25px;
+        background-color: var(--color-bg);
+        padding-left: 22px;
         box-shadow: var(--shadow);
+        border: 1px solid var(--color-border);
 
-        &.type-text,
         &.has-action {
-          padding-left: 15px;
+          // padding-left: 15px;
 
-          &:before {
-            display: none;
+          // &:before {
+          //   display: none;
+          // }
+
+          .flex {
+            padding-top: 5px;
+
+            button {
+              color: var(--color-accent);
+            }
           }
         }
 
         &:before {
           content: "";
-          @include radius(var(--radius-sm));
+          border-radius: var(--radius-sm);
           display: block;
           position: absolute;
           left: 10px;
-          top: 10px;
+          top: 9px;
           height: 15px;
           width: 4px;
         }
@@ -70,8 +78,12 @@ This is the styling for toast notifications
 
         p {
           display: block;
-          margin-bottom: 4px;
-          color: rgb(var(--color-text));
+          line-height: 1.4em;
+          color: var(--color-text);
+
+          b {
+            @include font(700);
+          }
 
           &:only-child {
             margin-bottom: 0;
@@ -86,10 +98,10 @@ This is the styling for toast notifications
           height: 32px;
           line-height: 32px;
           text-transform: uppercase;
-          color: rgb(var(--color-text-light));
+          color: var(--color-text-light);
 
           &:before {
-            background-color: rgb(var(--color-text), 0.075);
+            background-color: var(--color-text), 0.075;
           }
         }
       }

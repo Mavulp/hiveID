@@ -1,5 +1,6 @@
 <script setup lang='ts'>
 import Sidebar from './components/navigation/Sidebar.vue'
+import ToastWrap from './components/toast/ToastWrap.vue'
 </script>
 
 <template>
@@ -12,5 +13,7 @@ import Sidebar from './components/navigation/Sidebar.vue'
         </Transition>
       </RouterView>
     </div>
+
+    <ToastWrap />
   </div>
 </template>
