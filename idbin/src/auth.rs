@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use anyhow::Context;
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use axum::{
@@ -12,7 +10,6 @@ use axum::{
 use base64::Engine;
 use hmac::{Hmac, Mac};
 use idlib::Payload;
-use jwt::SignWithKey;
 use jwt::VerifyWithKey;
 use log::debug;
 use rusqlite::{params, OptionalExtension};
@@ -25,6 +22,7 @@ use crate::{
     error::Error,
     internal_error,
     services::{get_service, Service},
+    token,
 };
 
 pub fn api_route() -> Router {
@@ -224,23 +222,5 @@ pub async fn generate_jwt_for_user_and_service(
 ) -> anyhow::Result<String> {
     let groups = get_groups_for_user(&db, username.clone(), service.name.clone()).await;
 
-    let now = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
-    dbg!(now);
-    let payload = Payload {
-        name: username,
-        issued_at: now,
-        groups,
-    };
-
-    let secret_key = base64::engine::general_purpose::STANDARD
-        .decode(&service.secret)
-        .context("Failed to decode service secret")?;
-    let secret_key = Hmac::<Sha256>::new_from_slice(&secret_key)
-        .context("Failed to create HMAC from secret key")?;
-
-    let token = payload
-        .sign_with_key(&secret_key)
-        .context("Failed to sign payload")?;
-
-    Ok(token)
+    Ok(token::generate_jwt(username, groups, &service.secret)?)
 }
