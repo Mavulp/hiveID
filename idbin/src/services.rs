@@ -71,6 +71,10 @@ pub struct UpdateService {
 
     /// The callback URL which users will be redirected to after logging in to a service.
     callback_url: Option<String>,
+
+    /// The auth token revoke URL which will be called by idbin whenever permissions have changed
+    /// for a service.
+    revoke_url: Option<String>,
 }
 
 /// Create a new service.
@@ -405,6 +409,17 @@ pub(crate) async fn update_service(
             .context("Failed to update service")?;
         }
 
+        // Update URL
+        if let Some(url) = update.revoke_url {
+            conn.execute(
+                "UPDATE services \
+            SET revoke_url = ?1 \
+            WHERE name = ?2",
+                params![url, &service_id],
+            )
+            .context("Failed to update service")?;
+        }
+
         // Update icon
         if let Some(ref icon) = update.icon {
             conn.execute(
@@ -667,6 +682,7 @@ pub(crate) async fn post_update_service(
             nice_name: Some(update.display_name),
             description: Some(update.description),
             callback_url: Some(update.callback_url),
+            revoke_url: None,
             icon: update.icon.filter(|b| !b.is_empty()).map(|b| {
                 format!(
                     "data:image/png;base64,{}",

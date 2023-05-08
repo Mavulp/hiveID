@@ -8,7 +8,8 @@ use sha2::Sha256;
 use std::{
     env::{self},
     num::ParseIntError,
-    sync::Arc,
+    sync::{atomic::AtomicU64, Arc},
+    time::SystemTime,
 };
 use thiserror::Error;
 
@@ -24,6 +25,21 @@ pub use error::*;
 pub struct PermissionResponse {
     pub policy: Vec<Vec<String>>,
     pub group_policy: Vec<Vec<String>>,
+}
+
+#[derive(Clone)]
+pub struct AuthState {
+    last_updated: Arc<AtomicU64>,
+}
+
+impl Default for AuthState {
+    fn default() -> Self {
+        AuthState {
+            last_updated: Arc::new(AtomicU64::new(
+                SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs(),
+            )),
+        }
+    }
 }
 
 #[derive(Clone)]

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, pin::Pin, sync::Arc};
+use std::{collections::HashMap, pin::Pin, sync::atomic::Ordering, sync::Arc, time::SystemTime};
 
 use anyhow::Context;
 use axum::{
@@ -17,8 +17,9 @@ use cookie::{Cookie, CookieJar, SameSite};
 use futures::Future;
 use jwt::VerifyWithKey;
 use serde::{Deserialize, Serialize};
+use tracing::*;
 
-use crate::{Error, IdpClient, Payload, SecretKey, Variables};
+use crate::{AuthState, Error, Has, Jwt, Payload, SecretKey, Variables};
 
 #[derive(Clone)]
 pub struct AuthCallback(
@@ -31,7 +32,7 @@ pub struct AuthCallback(
     >,
 );
 
-pub fn api_route(_client: IdpClient, cb: Option<AuthCallback>) -> Router {
+pub fn api_route(cb: Option<AuthCallback>) -> Router {
     let mut router = Router::new()
         .route("/authorize", get(authorize_with_cookie))
         .route("/revoke", post(revoke_token))
@@ -45,9 +46,12 @@ pub fn api_route(_client: IdpClient, cb: Option<AuthCallback>) -> Router {
 }
 
 pub fn api_extensions(secret_key: SecretKey, variables: Arc<Variables>) -> Router {
+    let state = AuthState::default();
+
     Router::new()
         .layer(Extension(secret_key))
         .layer(Extension(variables))
+        .layer(Extension(state))
 }
 
 /// Consumes the response from the IdP and stores the received token as a
@@ -83,8 +87,16 @@ async fn authorize_with_cookie(
     Ok(response)
 }
 
-async fn revoke_token() -> Result<impl IntoResponse, Error> {
-    Ok(StatusCode::OK)
+async fn revoke_token(
+    Jwt(_payload, ..): Jwt<Has<"idbin">>,
+    Extension(state): Extension<AuthState>,
+) {
+    let now = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
+
+    state.last_updated.fetch_max(now, Ordering::SeqCst);
+    dbg!(state.last_updated.load(Ordering::SeqCst,));
+
+    debug!("Permissions updated at {now:?}");
 }
 
 async fn logout() -> Result<impl IntoResponse, Error> {

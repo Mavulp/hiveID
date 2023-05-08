@@ -3,16 +3,18 @@ use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
 };
+
 use askama::Template;
 use axum::{
     body::{boxed, BoxBody, Empty},
-    extract::Query,
+    extract::{Path, Query},
     http::{Response, StatusCode},
     response::{IntoResponse, Json},
     routing::{get, post, put},
     Extension, Form, Router,
 };
 use idlib::{AuthorizeCookie, Jwt, Payload};
+use log::*;
 use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use tokio_rusqlite::Connection;
@@ -21,13 +23,14 @@ use utoipa::ToSchema;
 use crate::{
     audits::{self, AuditAction},
     error::Error,
-    internal_error, into_response,
+    internal_error, into_response, token,
 };
 
 pub fn api_route() -> Router {
     Router::new()
         .route("/", get(get_account_info))
         .route("/", put(update_account_info))
+        .route("/:account/roles/:service", put(update_account_roles))
 }
 
 /// The account information.
@@ -196,6 +199,116 @@ async fn update_account(
     })
     .await
     .context("Failed to update account")?;
+
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAccountRoles {
+    /// Roles to remove.
+    #[serde(default)]
+    roles_to_remove: Vec<String>,
+
+    /// Roles to add.
+    #[serde(default)]
+    roles_to_add: Vec<String>,
+}
+
+/// Updates the account information.
+#[utoipa::path(
+    put,
+    path = "/api/v2/accounts/{account}/roles/{service}",
+    request_body = UpdateAccountRoles,
+    responses(
+        (status = 200, description = "Successfully Updates the roles for the user")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
+#[axum_macros::debug_handler]
+pub(crate) async fn update_account_roles(
+    Jwt(payload, ..): Jwt<()>,
+    Extension(db): Extension<Connection>,
+    Path((_account, service)): Path<(String, String)>,
+    Json(update): Json<UpdateAccountRoles>,
+) -> Result<(), (StatusCode, String)> {
+    let username = payload.name;
+    let service_name = service.clone();
+
+    debug!("Updating roles for account {username:?} on service {service:?}");
+
+    db.call(move |conn| {
+        for role in update.roles_to_add {
+            conn.execute(
+                "INSERT INTO user_roles (username, service, role) \
+                VALUES (?1, ?2, ?3)",
+                params![&username, &service, &role],
+            )
+            .context("Failed to add permissions")?;
+        }
+
+        for role in update.roles_to_remove {
+            let rows = conn
+                .execute(
+                    "DELETE FROM user_roles \
+                WHERE username = ?1 AND service = ?2 AND role = ?3",
+                    params![&username, &service, &role],
+                )
+                .context("Failed to remove permissions")?;
+
+            if rows == 0 {
+                warn!(
+                    "Tried to delete role {service}/{role} for {username} but could not find in DB"
+                );
+            }
+        }
+
+        Ok::<_, anyhow::Error>(())
+    })
+    .await
+    .map_err(internal_error)?;
+
+    invalidate_service_tokens(service_name, db)
+        .await
+        .context("Invalidating service tokens")
+        .map_err(internal_error)?;
+
+    Ok(())
+}
+
+async fn invalidate_service_tokens(
+    service_name: String,
+    db: tokio_rusqlite::Connection,
+) -> anyhow::Result<()> {
+    debug!("Invalidating auth tokens for {service_name}");
+
+    let (revoke_url, secret) = db
+        .call(move |conn| {
+            conn.query_row(
+                "SELECT revoke_url, secret FROM services WHERE name=?1",
+                params![service_name],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0).unwrap(),
+                        row.get::<_, String>(1).unwrap(),
+                    ))
+                },
+            )
+        })
+        .await?;
+
+    info!("{}", revoke_url);
+
+    let token = token::generate_jwt(String::new(), vec!["idbin".into()], &secret)?;
+
+    let client = reqwest::Client::new();
+    let _res = client
+        .post(revoke_url)
+        .header("Authorization", format!("Bearer {token}"))
+        .send()
+        .await?;
 
     Ok(())
 }

@@ -164,6 +164,8 @@ pub(crate) async fn refresh(
     Extension(db): Extension<Connection>,
     Json(refresh): Json<RefreshRequest>,
 ) -> Result<Json<RefreshResponse>, (StatusCode, String)> {
+    debug!("Refreshing authentication");
+
     let service = get_service(&db, refresh.service.clone())
         .await
         .map_err(internal_error)?
@@ -187,6 +189,11 @@ pub(crate) async fn refresh(
         .verify_with_key(&secret_key)
         .context("Failed to parse JWT")
         .map_err(internal_error)?;
+
+    debug!(
+        "Refreshing authentication for {} with service {}",
+        payload.name, refresh.service
+    );
 
     let new_auth_token = generate_jwt_for_user_and_service(db, payload.name, &service)
         .await
@@ -218,6 +225,7 @@ pub async fn generate_jwt_for_user_and_service(
     let groups = get_groups_for_user(&db, username.clone(), service.name.clone()).await;
 
     let now = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
+    dbg!(now);
     let payload = Payload {
         name: username,
         issued_at: now,

@@ -49,3 +49,69 @@ fn test_auth_endpoints() {
         .post("/api/v2/services/idbin/secret", None)
         .expect_status_unauthorized();
 }
+
+#[test]
+fn test_login() {
+    let mut server = TestServer::spawn();
+
+    server.get("/api/v2/accounts").expect_status_unauthorized();
+    server.claim_admin_and_auth().unwrap();
+    server.get("/api/v2/accounts").expect_status_ok();
+}
+
+#[test]
+fn test_auth_token_invalidated() {
+    let mut server = TestServer::spawn();
+
+    server.get("/api/v2/accounts").expect_status_unauthorized();
+    server.claim_admin_and_auth().unwrap();
+    server.get("/api/v2/accounts").expect_status_ok();
+
+    // assigning a new role to a user should invalidate all auth tokens for the service, generated
+    // before the role was assigned.
+    server
+        .post(
+            &format!("/api/v2/services/idbin/roles"),
+            json!({ "name": "newRole" }),
+        )
+        .expect_status_ok();
+    server
+        .put(
+            "/api/v2/accounts/root/roles/idbin",
+            json!({ "rolesToAdd": ["newRole"] }),
+        )
+        .expect_status_ok();
+
+    server.get("/api/v2/accounts").expect_status_unauthorized();
+}
+
+#[test]
+fn test_auth_token_invalidated_and_refresh() {
+    let mut server = TestServer::spawn();
+
+    server.get("/api/v2/accounts").expect_status_unauthorized();
+    server.claim_admin_and_auth().unwrap();
+    server.get("/api/v2/accounts").expect_status_ok();
+
+    // assigning a new role to a user should invalidate all auth tokens for the service, generated
+    // before the role was assigned.
+    server
+        .post("/api/v2/services/idbin/roles", json!({ "name": "newRole" }))
+        .expect_status_ok();
+    server
+        .put(
+            "/api/v2/accounts/root/roles/idbin",
+            json!({ "rolesToAdd": ["newRole"] }),
+        )
+        .expect_status_ok();
+
+    server.get("/api/v2/accounts").expect_status_unauthorized();
+
+    // HACK: we have to sleep for more than 1s since the JWT stores time in seconds, and we compare
+    //       this against when the permissions were last updated, which is also in seconds.
+    std::thread::sleep_ms(1500);
+
+    server.refresh_auth().unwrap();
+
+    server.get("/api/v2/accounts").expect_status_ok();
+}

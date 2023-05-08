@@ -6,8 +6,8 @@ use axum::{
     Extension, Router,
 };
 use error::Error;
-use idlib::{IdpClient, SecretKey, Variables};
-use log::warn;
+use idlib::{AuthState, IdpClient, SecretKey, Variables};
+use log::{info, warn};
 use rusqlite_migration::{Migrations, M};
 use status::{status_poll_loop, Statuses};
 use tokio::sync::RwLock;
@@ -33,10 +33,16 @@ mod refresh;
 mod register;
 mod services;
 mod status;
+mod token;
 
 pub type Connection = tokio_rusqlite::Connection;
 
-const MIGRATIONS: [M; 1] = [M::up(include_str!("../migrations/0001_initial.sql"))];
+const MIGRATIONS: [M; 2] = [
+    M::up(include_str!("../migrations/0001_initial.sql")),
+    M::up(include_str!(
+        "../migrations/0002_add_service_revoke_url.sql"
+    )),
+];
 
 pub fn internal_error<E>(err: E) -> (StatusCode, String)
 where
@@ -139,8 +145,7 @@ pub fn api_route(
         token_duration_seconds: 60 * 60,
         service_name: String::from("idbin"),
     };
-
-    let client = IdpClient::default();
+    let auth_state = AuthState::default();
 
     let mut router = Router::new()
         .route("/", get(home::page))
@@ -156,13 +161,14 @@ pub fn api_route(
         .route("/api/login", post(login::post_login))
         .route("/api/permissions", post(permissions::post_permissions))
         .route("/api/account", post(accounts::post_account))
-        .nest("/auth", idlib::api_route(client, None))
+        .nest("/auth", idlib::api_route(None))
         .nest("/api/v2", v2_api())
         .merge(SwaggerUi::new("/api/v2/swagger-ui").url("/api/v2/openapi.json", ApiDoc::openapi()))
         .layer(Extension(IdpClient::default()))
         .layer(Extension(Arc::new(variables)))
         .layer(Extension(db))
         .layer(Extension(secret_key))
+        .layer(Extension(auth_state))
         .layer(Extension(statuses));
 
     if let Some(serve_dir) = serve_dir {
@@ -229,6 +235,8 @@ async fn run() {
         status_poll_loop(conn, statuses).await;
     });
 
+    info!("Binding webserver to {bind_addr}");
+
     axum::Server::try_bind(&bind_addr)
         .expect("Failed to bind server")
         .serve(router.into_make_service())
@@ -239,6 +247,8 @@ async fn run() {
 fn main() {
     dotenv::dotenv().ok();
     logging::init();
+
+    info!("Starting hiveID");
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()

@@ -1,6 +1,6 @@
 use std::{
     marker::PhantomData,
-    sync::Arc,
+    sync::{atomic::Ordering, Arc},
     time::{Duration, SystemTime},
 };
 
@@ -25,8 +25,8 @@ use thiserror::Error;
 use tracing::{debug, error, warn};
 
 use crate::{
-    create_auth_cookie, Cookies, IdpClient, RefreshTokenRequest, RefreshTokenResponse, SecretKey,
-    Variables,
+    create_auth_cookie, AuthState, Cookies, IdpClient, RefreshTokenRequest, RefreshTokenResponse,
+    SecretKey, Variables,
 };
 
 #[must_use]
@@ -144,6 +144,17 @@ pub enum AuthorizationRejection {
     Generic(#[from] anyhow::Error),
 }
 
+async fn get_token_from_header<B: Send + Sync>(req: &mut Parts, state: &B) -> Option<String> {
+    let token = TypedHeader::<Authorization<Bearer>>::from_request_parts(req, state)
+        .await
+        .map(|h| h.0 .0.token().to_owned())
+        .ok()?;
+
+    debug!("Found auth header");
+
+    Some(token)
+}
+
 async fn get_token<B: Send + Sync>(req: &mut Parts, state: &B) -> Option<String> {
     let Cookies(jar) = match Cookies::from_request_parts(req, state).await.ok() {
         Some(jar) => jar,
@@ -178,8 +189,9 @@ where
     async fn from_request_parts(req: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
         let Extension(variables) =
             Extension::<Arc<Variables>>::from_request_parts(req, state).await?;
+        let Extension(auth_state) = Extension::<AuthState>::from_request_parts(req, state).await?;
 
-        let Some(token) = get_token(req, state).await else {
+        let Some(token) = get_token_from_header(req, state).await else {
             debug!("Failed to find auth token.");
 
             return Err(AuthorizationRejection::MissingApiAuth);
@@ -193,8 +205,16 @@ where
         let issued_at = Duration::from_secs(payload.issued_at);
         let now = SystemTime::UNIX_EPOCH.elapsed().unwrap();
 
-        // tokens are only valid for 60 days
         if now > issued_at + Duration::from_secs(variables.token_duration_seconds as u64) {
+            debug!("Token expired");
+            return Err(AuthorizationRejection::ExpiredToken);
+        }
+
+        let permissions_updated =
+            Duration::from_secs(auth_state.last_updated.load(Ordering::SeqCst) as u64);
+
+        dbg!(permissions_updated, now, issued_at);
+        if issued_at <= permissions_updated {
             debug!("Token expired");
             return Err(AuthorizationRejection::ExpiredToken);
         }

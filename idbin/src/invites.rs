@@ -125,7 +125,7 @@ pub(crate) async fn register_with_invite_link(
         let roles = get_default_roles_for_invite(conn, &key);
 
         for (service, role) in roles {
-            debug!("Assigning role {service:?}/{role:?} to {username:?}");
+            debug!("Assigning role {service}/{role} to {username:?}");
 
             conn.execute(
                 "INSERT INTO user_roles (username, service, role) \

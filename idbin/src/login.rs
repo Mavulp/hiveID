@@ -13,7 +13,7 @@ use base64::Engine;
 use hmac::{Hmac, Mac};
 use idlib::Payload;
 use jwt::SignWithKey;
-use log::debug;
+use log::*;
 use rusqlite::{params, OptionalExtension};
 use serde::Deserialize;
 use sha2::Sha256;
@@ -188,6 +188,7 @@ pub async fn generate_jwt_for_user_and_service(
     let groups = get_groups_for_user(&db, username.clone(), service.name.clone()).await;
 
     let now = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
+    warn!("{:?}", now);
     let payload = Payload {
         name: username,
         issued_at: now,

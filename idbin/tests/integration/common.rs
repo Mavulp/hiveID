@@ -1,5 +1,5 @@
 use assert_cmd::prelude::*;
-
+use serde_json::json;
 use std::process::{Child, Command, Stdio};
 use temp_dir::TempDir;
 use ureq::OrAnyStatus;
@@ -14,6 +14,30 @@ pub struct TestServer {
 impl TestServer {
     pub fn spawn() -> Self {
         spawn_idbin()
+    }
+
+    pub fn refresh_auth(&mut self) -> anyhow::Result<()> {
+        #[derive(Debug, Clone, serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct RefreshResponse {
+            new_auth_token: String,
+        }
+
+        let response: RefreshResponse = self
+            .post(
+                "/api/v2/auth/refresh",
+                json!({
+                    "authToken": self.auth_token.clone().unwrap(),
+                    "service": "idbin"
+                }),
+            )?
+            .into_json()?;
+
+        println!("Got new auth token {:?}", response);
+
+        self.auth_token = Some(response.new_auth_token);
+
+        Ok(())
     }
 
     pub fn claim_admin_and_auth(&mut self) -> anyhow::Result<()> {
@@ -45,6 +69,13 @@ impl TestServer {
         let (_, rest) = location.split_once("token=").unwrap();
 
         self.auth_token = Some(rest.to_string());
+
+        self.put(
+            "/api/v2/services/idbin",
+            json!({
+                "revokeUrl": &format!("{}/auth/revoke", self.addr)
+            }),
+        )?;
 
         Ok(())
     }
@@ -120,12 +151,13 @@ fn spawn_idbin() -> TestServer {
     let addr = format!("127.0.0.1:{port}");
 
     let mut cmd = Command::cargo_bin("idbin").unwrap();
-    cmd.env("RUST_LOG", "debug");
+    cmd.env("RUST_LOG", "debug,hyper=warn,tower_http=warn");
     cmd.env("DB_PATH", d.child("db.sqlite"));
     cmd.env("BIND_ADDRESS", &addr);
     cmd.env("IDP_SECRET_KEY", "aHVudGVyMg==");
     cmd.env("IDP_REFRESH_ADDR", format!("http://{addr}/refresh"));
     cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
 
     let mut output = cmd.spawn().unwrap();
     let stdout = output.stdout.take().unwrap();
@@ -139,13 +171,30 @@ fn spawn_idbin() -> TestServer {
             line.clear();
         }
     });
+    let stderr = output.stderr.take().unwrap();
+    std::thread::spawn(move || {
+        use std::io::BufRead;
+        let mut reader = std::io::BufReader::new(stderr);
+        let mut line = String::new();
+        loop {
+            reader.read_line(&mut line).unwrap();
+            print!("{line}");
+            line.clear();
+        }
+    });
 
     let addr = format!("http://127.0.0.1:{port}");
 
+    let mut tries = 0;
     loop {
         if let Err(e) = ureq::get(&addr).call() {
             if let ureq::Error::Transport(t) = e {
                 if t.kind() == ureq::ErrorKind::ConnectionFailed {
+                    tries += 1;
+                    if tries > 100 {
+                        panic!("Server didn't start in time");
+                    }
+                    std::thread::sleep_ms(10);
                     continue;
                 }
             }
