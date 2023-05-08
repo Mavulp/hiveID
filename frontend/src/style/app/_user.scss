@@ -1,0 +1,16 @@
+.user-initial {
+  @include font(700);
+  width: 24px;
+  text-align: center;
+  height: 24px;
+  line-height: 24px;
+  border-radius: var(--radius-sm);
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  text-decoration: none;
+  background-color: var(--color-accent-light);
+
+  &.gray {
+    background-color: var(--color-bg);
+  }
+}

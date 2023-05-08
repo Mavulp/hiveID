@@ -2,6 +2,8 @@
 @import "./navigation/index";
 @import "./services/index";
 @import "./invites/index";
+@import "./audit/index";
+@import "./user";
 
 .page-title {
   margin-bottom: 64px;
@@ -21,10 +23,6 @@
       margin-bottom: 10px;
     }
   }
-
-  // &.sticky {
-  //   margin-bottom: 16px;
-  // }
 }
 
 .page-title-sticky {

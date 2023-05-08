@@ -14,7 +14,7 @@ function createInvite() {
   toast.push({
     type: 'success',
     message: 'Invite link copied to clipboard',
-  }, true)
+  })
 }
 </script>
 
