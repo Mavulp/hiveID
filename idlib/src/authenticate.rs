@@ -94,7 +94,6 @@ async fn revoke_token(
     let now = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
 
     state.last_updated.fetch_max(now, Ordering::SeqCst);
-    dbg!(state.last_updated.load(Ordering::SeqCst,));
 
     debug!("Permissions updated at {now:?}");
 }

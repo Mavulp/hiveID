@@ -1,3 +1,4 @@
+use argon2::Argon2;
 use askama::Template;
 use axum::{
     body::{self, boxed, BoxBody, Empty, Full},
@@ -132,6 +133,9 @@ fn v2_api() -> Router {
         .nest("/auth", auth::api_route())
 }
 
+#[derive(Clone)]
+pub struct PasswordHasher(pub Argon2<'static>);
+
 pub fn api_route(
     db: tokio_rusqlite::Connection,
     secret_key: SecretKey,
@@ -146,6 +150,17 @@ pub fn api_route(
         service_name: String::from("idbin"),
     };
     let auth_state = AuthState::default();
+
+    let password_hasher = if let Ok(_) = env::var("IDBIN_TEST_HASH") {
+        let argon2 = Argon2::new(
+            argon2::Algorithm::default(),
+            argon2::Version::default(),
+            argon2::Params::new(16, 1, 1, None).unwrap(),
+        );
+        PasswordHasher(argon2)
+    } else {
+        PasswordHasher(Argon2::default())
+    };
 
     let mut router = Router::new()
         .route("/", get(home::page))
@@ -169,7 +184,8 @@ pub fn api_route(
         .layer(Extension(db))
         .layer(Extension(secret_key))
         .layer(Extension(auth_state))
-        .layer(Extension(statuses));
+        .layer(Extension(statuses))
+        .layer(Extension(password_hasher));
 
     if let Some(serve_dir) = serve_dir {
         router = router.nest_service("/static/", get_service(ServeDir::new(serve_dir)));

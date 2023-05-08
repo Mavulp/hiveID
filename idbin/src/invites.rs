@@ -3,7 +3,7 @@ use std::time::SystemTime;
 use anyhow::Context;
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
-    Argon2, PasswordHasher,
+    PasswordHasher,
 };
 use askama::Template;
 use axum::{
@@ -25,7 +25,7 @@ use utoipa::ToSchema;
 use crate::{
     audits::{self, AuditAction},
     error::Error,
-    internal_error, into_response,
+    internal_error, into_response, PasswordHasher as IdPasswordHasher,
 };
 
 pub fn api_route() -> Router {
@@ -95,12 +95,12 @@ type AdminJwt = Jwt<Has<"">>;
 )]
 pub(crate) async fn register_with_invite_link(
     Extension(db): Extension<Connection>,
+    Extension(IdPasswordHasher(argon)): Extension<IdPasswordHasher>,
     Path(key): Path<String>,
     Json(create): Json<RegisterAccount>,
 ) -> Result<(), (StatusCode, String)> {
     let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let phc_string = argon2
+    let phc_string = argon
         .hash_password(create.password.as_bytes(), &salt)
         .context("Failed to hash password")
         .map_err(internal_error)?

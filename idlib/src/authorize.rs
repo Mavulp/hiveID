@@ -213,7 +213,6 @@ where
         let permissions_updated =
             Duration::from_secs(auth_state.last_updated.load(Ordering::SeqCst) as u64);
 
-        dbg!(permissions_updated, now, issued_at);
         if issued_at <= permissions_updated {
             debug!("Token expired");
             return Err(AuthorizationRejection::ExpiredToken);

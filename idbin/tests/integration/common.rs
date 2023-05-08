@@ -154,6 +154,7 @@ fn spawn_idbin() -> TestServer {
     cmd.env("RUST_LOG", "debug,hyper=warn,tower_http=warn");
     cmd.env("DB_PATH", d.child("db.sqlite"));
     cmd.env("BIND_ADDRESS", &addr);
+    cmd.env("IDBIN_TEST_HASH", "");
     cmd.env("IDP_SECRET_KEY", "aHVudGVyMg==");
     cmd.env("IDP_REFRESH_ADDR", format!("http://{addr}/refresh"));
     cmd.stdout(Stdio::piped());

@@ -36,7 +36,7 @@ impl Default for AuthState {
     fn default() -> Self {
         AuthState {
             last_updated: Arc::new(AtomicU64::new(
-                SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs(),
+                SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs() - 5,
             )),
         }
     }

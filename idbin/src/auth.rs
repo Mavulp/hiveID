@@ -1,5 +1,5 @@
 use anyhow::Context;
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use argon2::{PasswordHash, PasswordVerifier};
 use axum::{
     body::{boxed, BoxBody, Empty},
     extract::Json,
@@ -22,7 +22,7 @@ use crate::{
     error::Error,
     internal_error,
     services::{get_service, Service},
-    token,
+    token, PasswordHasher,
 };
 
 pub fn api_route() -> Router {
@@ -62,6 +62,7 @@ pub(crate) struct LoginRequest {
 )]
 pub(crate) async fn login(
     Extension(db): Extension<Connection>,
+    Extension(PasswordHasher(argon)): Extension<PasswordHasher>,
     Json(login): Json<LoginRequest>,
 ) -> Result<Response<BoxBody>, (StatusCode, String)> {
     let username = login.username.clone();
@@ -88,12 +89,11 @@ pub(crate) async fn login(
         }
     };
 
-    let argon2 = Argon2::default();
     let parsed_hash = PasswordHash::new(&password_hash)
         .context("Failed creating hash")
         .map_err(internal_error)?;
 
-    if argon2
+    if argon
         .verify_password(login.password.as_bytes(), &parsed_hash)
         .is_err()
     {
